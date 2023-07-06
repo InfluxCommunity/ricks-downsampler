@@ -7,7 +7,7 @@ def schedule():
     interval = int(os.getenv('RUN_INTERVAL'))
     scheduler = BlockingScheduler()
     scheduler.add_job(run, IntervalTrigger(minutes=interval), id='my_job', interval=interval)
-   
+    
     scheduler.start()
 
 def run(interval=0):
