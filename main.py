@@ -9,7 +9,10 @@ def parse_interval(interval):
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
         raise ValueError(f'Invalid format: {interval}')
-    return int(match.group(1)), match.group(2)
+    t = int(match.group(1))
+    if t < 1:
+        raise ValueError('Time period must be greater than 0')
+    return t, match.group(2)
 
 def get_next_run_time_minutes(minutes, now=None):
     if now == None:

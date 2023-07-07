@@ -15,6 +15,8 @@ class TestParseInterval(unittest.TestCase):
             parse_interval('m')
         with self.assertRaises(ValueError):
             parse_interval('10w')
+        with self.assertRaises(ValueError):
+            parse_interval('0m')
 
 class TestGetNextRunTime(unittest.TestCase):
     def test_hours(self):
@@ -23,7 +25,7 @@ class TestGetNextRunTime(unittest.TestCase):
             test_time = datetime(2023,7,7, tc["clock_hour"], tc["clock_minute"])
             next_run_time = get_next_run_time_hours(1, now=test_time)
             self.assert_(next_run_time, datetime(2023, 7, tc["expected_hour"], 0))
-            
+
     def test_minutes_basic(self):
         test_cases = [{"clock_minutes":1, "run_interval":1, "expected_minute":2},
                       {"clock_minutes":15, "run_interval":10, "expected_minute":20},
