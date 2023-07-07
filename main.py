@@ -3,20 +3,27 @@ from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 
+
+def parse_interval(interval):
+    print(interval)
+
 def schedule():
-    run_interval = int(os.getenv('RUN_INTERVAL', 60))
+    pass
     
-    scheduler = BlockingScheduler()
-    scheduler.add_job(run, IntervalTrigger(minutes=run_interval), args=[run_interval])
-    run(run_interval)
-    scheduler.start()
+    
+    # scheduler = BlockingScheduler()
+    # scheduler.add_job(run, IntervalTrigger(minutes=run_interval), args=[run_interval])
+    # run(run_interval)
+    # scheduler.start()
 
 def run(run_interval):
-    now = datetime.now()
-    prev = now - timedelta(minutes=run_interval)
-    stop = now.strftime('%Y-%m-%d %H:%M:00')
-    start = prev.strftime('%Y-%m-%d %H:%M:00')
-    print(f"sample from {start} to {stop}")
+    pass
+    # now = datetime.now()
+    # prev = now - timedelta(minutes=run_interval)
+    # stop = now.strftime('%Y-%m-%d %H:%M:00')
+    # start = prev.strftime('%Y-%m-%d %H:%M:00')
+    # print(f"sample from {start} to {stop}")
 
 if __name__ == "__main__":
-    schedule()
+    interval = int(os.getenv('RUN_INTERVAL'))
+    parse_interval(interval)
