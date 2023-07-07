@@ -17,4 +17,7 @@ A project to make it easy to downsample with InfluxDB 3.0.
   * Time interval is 10m, and the current time is 23:59, the first run will be at 00:00 the next day (1 minute later), then at 00:10, 00:20, etc...
 
   ## Hours
-  For run times specified in hours, the first run will always occur exactly at the start of the next hour. 
+  For run times specified in hours, the first run will always occur exactly at the start of the next hour, and then at intervals of the specified hours after.
+
+  ## Days
+  For run times specified in days, the first run will be at mindnight, and then at intervals of the specified days after.

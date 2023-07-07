@@ -30,9 +30,13 @@ def get_next_run_time_minutes(minutes, now=None):
 def get_next_run_time_hours(hours, now=None):
     if now == None:
         now = datetime.now()
-
     return now.replace(hour=now.hour + 1, minute=0, second=0, microsecond=0)
-    
+
+def get_next_run_time_days(days, now=None):
+    if now == None:
+        now = datetime.now()
+    return now.replace(day = now.day + 1, hour=0, minute=0, second=0, microsecond=0)
+   
 def schedule():
     pass
     

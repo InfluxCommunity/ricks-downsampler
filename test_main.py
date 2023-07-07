@@ -26,6 +26,13 @@ class TestGetNextRunTime(unittest.TestCase):
             next_run_time = get_next_run_time_hours(1, now=test_time)
             self.assert_(next_run_time, datetime(2023, 7, tc["expected_hour"], 0))
 
+    def test_days(self):
+        test_cases = [{"clock_day": 7, "expected_day":8}]
+        for tc in test_cases:
+            test_time = datetime(2023,7,tc["clock_day"], 7)
+            next_run_time = get_next_run_time_hours(1, now=test_time)
+            self.assert_(next_run_time, datetime(2023, 7, 8, 0, 0))
+
     def test_minutes_basic(self):
         test_cases = [{"clock_minutes":1, "run_interval":1, "expected_minute":2},
                       {"clock_minutes":15, "run_interval":10, "expected_minute":20},
