@@ -11,7 +11,7 @@ def parse_interval(interval):
         raise ValueError(f'Invalid format: {interval}')
     return int(match.group(1)), match.group(2)
 
-def get_next_run_time(minutes, now=None):
+def get_next_run_time_minutes(minutes, now=None):
     if now == None:
         now = datetime.now()
 
@@ -24,8 +24,12 @@ def get_next_run_time(minutes, now=None):
     else:
         return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 
+def get_next_run_time_hours(hours, now=None):
+    if now == None:
+        now = datetime.now()
 
-
+    return now.replace(hour=now.hour + 1, minute=0, second=0, microsecond=0)
+    
 def schedule():
     pass
     
