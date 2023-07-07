@@ -11,6 +11,20 @@ def parse_interval(interval):
         raise ValueError(f'Invalid format: {interval}')
     return int(match.group(1)), match.group(2)
 
+def get_next_run_time(minutes, now=None):
+    if now == None:
+        now = datetime.now()
+
+    if minutes < 60:
+        next_minute = ((now.minute // minutes) + 1) * minutes
+        if next_minute >= 60:
+            return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        else:
+            return now.replace(minute=next_minute, second=0, microsecond=0)
+    else:
+        return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+
 
 def schedule():
     pass
@@ -31,4 +45,5 @@ def run(run_interval):
 
 if __name__ == "__main__":
     interval = int(os.getenv('RUN_INTERVAL'))
-    parse_interval(interval)
+    inter_val, interval_type = parse_interval(interval)
+  

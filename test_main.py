@@ -1,5 +1,6 @@
 import unittest
-from main import parse_interval
+from main import parse_interval, get_next_run_time
+from datetime import datetime
 
 class TestParseInterval(unittest.TestCase):
     def test_positive_case(self):
@@ -14,6 +15,36 @@ class TestParseInterval(unittest.TestCase):
             parse_interval('m')
         with self.assertRaises(ValueError):
             parse_interval('10w')
+
+class TestGetNextRunTime(unittest.TestCase):
+
+    def test_minutes_basic(self):
+        test_cases = [{"clock_minutes":1, "run_interval":1, "expected_minute":2},
+                      {"clock_minutes":15, "run_interval":10, "expected_minute":20},
+                      {"clock_minutes":4, "run_interval":45, "expected_minute":45}]
+        for tc in test_cases:
+            test_time = datetime(2023, 7, 7, 14, tc["clock_minutes"])
+            next_run_time = get_next_run_time(tc["run_interval"], now=test_time)
+            self.assertEqual(next_run_time, datetime(2023, 7, 7, 14, tc["expected_minute"]))
+        
+    def test_minutes_midnight(self):
+        # run close to midnight, expect it to run the next day
+        test_cases = [{"clock_minutes":59, "run_interval":1, "expected_minute":0, "expected_date": 8, "expected_hour":0}]
+        for tc in test_cases:
+            test_time = datetime(2023, 7, 7, 23, tc["clock_minutes"])
+            next_run_time = get_next_run_time(tc["run_interval"], now=test_time)
+            self.assertEqual(next_run_time, datetime(2023, 7, tc["expected_date"], tc["expected_hour"], tc["expected_minute"]))
+
+    def test_minutes_greater_than_60(self):
+        # before 11pm
+        now = datetime(2023, 7, 7, 22, 30) 
+        next_run_time = get_next_run_time(120, now=now)
+        self.assertEqual(next_run_time, datetime(2023, 7, 7, 23, 0))
+
+        #after 11pm
+        now = datetime(2023, 7, 7, 23, 30) 
+        next_run_time = get_next_run_time(120, now=now)
+        self.assertEqual(next_run_time, datetime(2023, 7, 8, 0, 0))
 
 if __name__ == "__main__":
     unittest.main()
