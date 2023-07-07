@@ -1,11 +1,16 @@
 import os
+import re
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 
 
 def parse_interval(interval):
-    print(interval)
+    match = re.fullmatch(r'(\d+)([mhd])', interval)
+    if match is None:
+        raise ValueError(f'Invalid format: {interval}')
+    return int(match.group(1)), match.group(2)
+
 
 def schedule():
     pass
