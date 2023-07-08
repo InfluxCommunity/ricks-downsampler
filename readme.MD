@@ -10,6 +10,15 @@ This code is designed to be run in a container, and uses a collection of environ
  # Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
 
+ ## Logging
+ You can set up an influxdb instance to log runs of the downsampling job. To do that, you need to pass in the following envars:
+  * LOG_HOST - the host of the influxdb instance you are using for logging the task runs. This can be the same or a different instance than the one that hosts the data you are downsampling.
+  * LOG_DB - the database where you want to store the log information.
+  * LOG_TOKEN - a token that can write to that log.
+  * LOG_ORG - this is only required if you are using InfluxDB Cloud Serverless. 
+
+  If you leave out any of the first three envars (LOG_HOST, LOG_DB, or LOG_TOKEN), logging will simply be skipped.
+
  # Time Behvavior
  The first run of the downsampling will occur based on a combination of wall time and the specified run interval.
 

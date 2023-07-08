@@ -3,8 +3,10 @@ import re
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
+from influxdb_client_3 import InfluxDBClient3, Point
 
-
+logging_client = None
+interval = ""
 def parse_interval(interval):
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
@@ -69,7 +71,33 @@ def run(interval_val, interval_type, now=None):
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
+    global logging_client
+
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    log_run(now, then)
+
+def log_run(now, then):
+    global interval
+    if logging_client is not None:
+        point = (Point("task_log")
+         .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
+         .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
+         .tag("interval", interval))
+        logging_client.write(point)
+
+def setup_logging():
+    host = os.getenv('LOG_HOST')
+    db = os.getenv('LOG_DB')
+    token = os.getenv('LOG_TOKEN')
+    org = os.getenv('LOG_ORG', 'none')
+
+    if None in [host, db, token]:
+        print("Log host, database, or token not defined. Skipping logging.")
+    else:
+        global logging_client
+        logging_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
+        global interval
+        interval = os.getenv('RUN_INTERVAL')
 
 if __name__ == "__main__":
     # parse the user input
@@ -79,9 +107,12 @@ if __name__ == "__main__":
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
     run_previous = run_previous_opt.lower() in ['true', '1']
 
+    setup_logging()
+    
     if run_previous:
         now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
         run(interval_val, interval_type, now=now)
+
 
     # set the start date based on the interval type
     # set the values for the intervals
