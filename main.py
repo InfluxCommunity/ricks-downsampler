@@ -14,13 +14,22 @@ def parse_interval(interval):
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
 
-def get_next_run_time(interval_val, interval_type):
+def get_next_run_time(interval_val, interval_type, now=None, run_previous=False):
     if interval_type == "m":
-        return get_next_run_time_minutes(interval_val)
+        t =  get_next_run_time_minutes(interval_val, now)
+        if run_previous:
+            t = t.replace(minute=t.minute-interval_val)
+        return t
     elif interval_type == "h":
-        return get_next_run_time_hours(interval_val)
+        t = get_next_run_time_hours(interval_val, now)
+        if run_previous:
+            t = t.replace(hour=t.hour-interval_val )
+        return t
     elif interval_type == "d":
-        return get_next_run_time_days(interval_val)
+        t = get_next_run_time_days(interval_val, now)
+        if run_previous:
+            t = t.replace(day=t.date-interval_val)
+        return t
 
 def get_next_run_time_minutes(minutes, now=None):
     if now == None:
@@ -46,22 +55,27 @@ def get_next_run_time_days(days, now=None):
     return now.replace(day = now.day + 1, hour=0, minute=0, second=0, microsecond=0)
    
 
-def run():
-    now = datetime.now()
+def run(now=None):
+    if now is None:
+        now = datetime.now()
     print(f"{now}:{now.replace(second=0,microsecond=0)}")
     
 if __name__ == "__main__":
     # parse the user input
     interval = os.getenv('RUN_INTERVAL')
     interval_val, interval_type = parse_interval(interval)
-    next_run_time = get_next_run_time(interval_val, interval_type)
 
-    # establish the baseline for timing
-    start_date = datetime.now()
-    interval_settings = {"days":0, "hours":0,"minutes":0}
+    run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
+    # Convert to boolean
+    run_previous = run_previous_opt.lower() in ['true', '1']
+    if run_previous:
+        now = get_next_run_time(interval_val, interval_type, run_previous=True)
+        run(now=now)
 
     # set the start date based on the interval type
     # set the values for the intervals
+    start_date = datetime.now()
+    interval_settings = {"days":0, "hours":0,"minutes":0}
     if interval_type == "m":
         start_date = start_date.replace(minute=0,second=0,microsecond=0)
         interval_settings["minutes"] = interval_val

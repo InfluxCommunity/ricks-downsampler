@@ -3,6 +3,8 @@ A project to make it easy to downsample with InfluxDB 3.0.
 # Required Envars
  * RUN_INTERVAL - A string in the form of an InfluxQL time interval. i.e. an integer then a time specifier. Examples: 1m, 6h, 7d. Allowable time specifiers are m (munutes), h (hours), and d (days).
 
+ # Option Envars
+ * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
 
  # Time Behvavior
  The first run of the downsampling will occur based on a combination of wall time and the specified run interval.
@@ -12,7 +14,7 @@ A project to make it easy to downsample with InfluxDB 3.0.
  
  Some examples:
   * Time Interval is 10m, and the current time is 11:05, the first run will be at 11:10, and subsequent runs at 11:20, 11:30, etc...
-  * Time interval is 1m, and the current time is 12:11, the first run will be at 12:12, and subsequent runs at 12:12, 12:13, etc...
+  * Time interval is 1m, and the current time is 12:11, the first run will be at 12:12, and subsequent runs at 12:13, 12:14, etc...
   * Time interval is 61m, and the current time is 12:59, the first run will be at 13:00, and subsequent runs at 14:01, 15:02, etc...
   * Time interval is 10m, and the current time is 23:59, the first run will be at 00:00 the next day (1 minute later), then at 00:10, 00:20, etc...
 
@@ -21,3 +23,10 @@ A project to make it easy to downsample with InfluxDB 3.0.
 
   ## Days
   For run times specified in days, the first run will be at mindnight, and then at intervals of the specified days after.
+
+ ## RUN_PREVIOUS_INTERVAL
+ If set to true, the downsampling will run immediately for the previous interval and then proceed as normal.
+
+ Some examples with ```RUN_PREVIOUS_INTERVAL=true```:
+ * Time Interval is 10m, and the current time is 11:05, the first run will be at 11:00, and subsequent runs at 11:10, 11:20, etc...
+ * Time interval is 1m, and the current time is 12:11:59, the first run will be at 12:11:00, and subsequent runs at 12:12, 12:13, etc...

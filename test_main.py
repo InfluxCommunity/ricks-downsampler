@@ -1,5 +1,5 @@
 import unittest
-from main import parse_interval, get_next_run_time_minutes, get_next_run_time_hours
+from main import parse_interval, get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time
 from datetime import datetime
 
 class TestParseInterval(unittest.TestCase):
@@ -19,6 +19,25 @@ class TestParseInterval(unittest.TestCase):
             parse_interval('0m')
 
 class TestGetNextRunTime(unittest.TestCase):
+    def test_get_with_previous_hour(self):
+        test_cases = [{"interval_val":1, "interval_type":"h","run_prev":True,"expected_hour":8,
+                       "interval_val":1, "interval_type":"h","run_prev":True,"expected_hour":7,
+                       }]
+        
+        for tc in test_cases:
+            test_time = datetime(2023,7,7,7,7)
+            t = get_next_run_time(tc["interval_val"], tc["interval_type"], now=test_time, run_previous=tc["run_prev"] )
+            self.assertEqual(t.hour, tc["expected_hour"])
+
+    def test_get_with_previous_minutes(self):
+        test_cases = [{"interval_val":10, "interval_type":"m","run_prev":True,"expected_minute":20
+                       }]
+        
+        for tc in test_cases:
+            test_time = datetime(2023,7,7,7,29)
+            t = get_next_run_time(tc["interval_val"], tc["interval_type"], now=test_time, run_previous=tc["run_prev"] )
+            self.assertEqual(t.minute, tc["expected_minute"])
+
     def test_hours(self):
         test_cases = [{"clock_minute":1, "clock_hour":1, "expected_hour":2}]
         for tc in test_cases:
