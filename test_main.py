@@ -1,5 +1,5 @@
 import unittest
-from main import parse_interval, get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time
+from main import parse_interval, get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
 from datetime import datetime
 
 class TestParseInterval(unittest.TestCase):
@@ -18,6 +18,19 @@ class TestParseInterval(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_interval('0m')
 
+class TestNowANdThen(unittest.TestCase):
+    def test_get_then_boundaries(self):
+        test_time = datetime(2023,7,7,12,0)
+        then = get_then(1,"m",test_time)
+        self.assertEqual(then, datetime(2023,7,7,11,59))
+
+        test_time = datetime(2023,7,7,0,0)
+        then = get_then(1,"m",test_time)
+        self.assertEqual(then, datetime(2023,7,6,23,59))
+
+        test_time = datetime(2023,7,7,12,0)
+        then = get_then(1,"m",test_time)
+        self.assertEqual(then, datetime(2023,7,7,11,59))
 class TestGetNextRunTime(unittest.TestCase):
     def test_get_with_previous_hour(self):
         test_cases = [{"interval_val":1, "interval_type":"h","run_prev":True,"expected_hour":8,

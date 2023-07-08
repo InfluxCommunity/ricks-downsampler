@@ -55,22 +55,33 @@ def get_next_run_time_days(days, now=None):
     return now.replace(day = now.day + 1, hour=0, minute=0, second=0, microsecond=0)
    
 
-def run(now=None):
-    if now is None:
-        now = datetime.now()
-    print(f"{now}:{now.replace(second=0,microsecond=0)}")
+def get_then(interval_val, interval_type, now):
+    if interval_type == "m":
+        return now - timedelta(minutes=interval_val)
+    elif interval_type == "h":
+        return now - timedelta(hours=interval_val)
+    elif interval_type == "d":
+        return now - timedelta(days=interval_val)
     
+def run(interval_val, interval_type, now=None):
+    if now is None:
+        now = datetime.utcnow()
+    now = now.replace(second=0,microsecond=0)
+    then = get_then(interval_val, interval_type, now)
+
+    print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+
 if __name__ == "__main__":
     # parse the user input
     interval = os.getenv('RUN_INTERVAL')
     interval_val, interval_type = parse_interval(interval)
 
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
-    # Convert to boolean
     run_previous = run_previous_opt.lower() in ['true', '1']
+
     if run_previous:
-        now = get_next_run_time(interval_val, interval_type, run_previous=True)
-        run(now=now)
+        now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
+        run(interval_val, interval_type, now=now)
 
     # set the start date based on the interval type
     # set the values for the intervals
@@ -94,5 +105,7 @@ if __name__ == "__main__":
                         hours=interval_settings["hours"],
                         minutes=interval_settings["minutes"], 
                         seconds=0,
-                        start_date=start_date)
+                        start_date=start_date,
+                        args = [interval_val, interval_type]
+                        )
     scheduler.start()

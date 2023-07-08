@@ -1,4 +1,8 @@
-A project to make it easy to downsample with InfluxDB 3.0.
+# Summary
+A project to make it easy to downsample with InfluxDB 3.0. It handles running a downsampling task of up to 1 minute resolution, but can handle hour and day intervals as well.
+
+# Envars
+This code is designed to be run in a container, and uses a collection of environment variables to configure it.
 
 # Required Envars
  * RUN_INTERVAL - A string in the form of an InfluxQL time interval. i.e. an integer then a time specifier. Examples: 1m, 6h, 7d. Allowable time specifiers are m (munutes), h (hours), and d (days).
@@ -18,10 +22,10 @@ A project to make it easy to downsample with InfluxDB 3.0.
   * Time interval is 61m, and the current time is 12:59, the first run will be at 13:00, and subsequent runs at 14:01, 15:02, etc...
   * Time interval is 10m, and the current time is 23:59, the first run will be at 00:00 the next day (1 minute later), then at 00:10, 00:20, etc...
 
-  ## Hours
+## Hours
   For run times specified in hours, the first run will always occur exactly at the start of the next hour, and then at intervals of the specified hours after.
 
-  ## Days
+ ## Days
   For run times specified in days, the first run will be at mindnight, and then at intervals of the specified days after.
 
  ## RUN_PREVIOUS_INTERVAL
