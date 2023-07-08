@@ -14,6 +14,14 @@ def parse_interval(interval):
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
 
+def get_next_run_time(interval_val, interval_type):
+    if interval_type == "m":
+        return get_next_run_time_minutes(interval_val)
+    elif interval_type == "h":
+        return get_next_run_time_hours(interval_val)
+    elif interval_type == "d":
+        return get_next_run_time_days(interval_val)
+
 def get_next_run_time_minutes(minutes, now=None):
     if now == None:
         now = datetime.now()
@@ -37,24 +45,40 @@ def get_next_run_time_days(days, now=None):
         now = datetime.now()
     return now.replace(day = now.day + 1, hour=0, minute=0, second=0, microsecond=0)
    
-def schedule():
-    pass
-    
-    
-    # scheduler = BlockingScheduler()
-    # scheduler.add_job(run, IntervalTrigger(minutes=run_interval), args=[run_interval])
-    # run(run_interval)
-    # scheduler.start()
 
-def run(run_interval):
-    pass
-    # now = datetime.now()
-    # prev = now - timedelta(minutes=run_interval)
-    # stop = now.strftime('%Y-%m-%d %H:%M:00')
-    # start = prev.strftime('%Y-%m-%d %H:%M:00')
-    # print(f"sample from {start} to {stop}")
-
+def run():
+    now = datetime.now()
+    print(f"{now}:{now.replace(second=0,microsecond=0)}")
+    
 if __name__ == "__main__":
-    interval = int(os.getenv('RUN_INTERVAL'))
-    inter_val, interval_type = parse_interval(interval)
-  
+    # parse the user input
+    interval = os.getenv('RUN_INTERVAL')
+    interval_val, interval_type = parse_interval(interval)
+    next_run_time = get_next_run_time(interval_val, interval_type)
+
+    # establish the baseline for timing
+    start_date = datetime.now()
+    interval_settings = {"days":0, "hours":0,"minutes":0}
+
+    # set the start date based on the interval type
+    # set the values for the intervals
+    if interval_type == "m":
+        start_date = start_date.replace(minute=0,second=0,microsecond=0)
+        interval_settings["minutes"] = interval_val
+    elif interval_type =="h":
+        start_date = start_date.replace(minute=0,second=0,microsecond=0)
+        interval_settings["hours"] = interval_val
+    elif interval_type == "d":
+        start_date = start_date.replace(hour=0,minute=0,second=0,microsecond=0)
+        interval_settings["days"] = interval_val
+
+    #specify and run the job
+    scheduler = BlockingScheduler()
+    scheduler.add_job(run, 
+                      'interval', 
+                        days = interval_settings["days"],
+                        hours=interval_settings["hours"],
+                        minutes=interval_settings["minutes"], 
+                        seconds=0,
+                        start_date=start_date)
+    scheduler.start()
