@@ -1,5 +1,6 @@
 import os
 import re
+import socket
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
@@ -74,7 +75,10 @@ def run(interval_val, interval_type, now=None):
     global logging_client
 
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
-    log_run(now, then)
+    try:
+        log_run(now, then)
+    except Exception as e:
+        print(f"Logging failed due to {str(e)}")
 
 def log_run(now, then):
     global interval
@@ -82,7 +86,9 @@ def log_run(now, then):
         point = (Point("task_log")
          .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
          .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
-         .tag("interval", interval))
+         .tag("interval", interval)
+         .tag("task_host",socket.gethostname()))
+        
         logging_client.write(point)
 
 def setup_logging():
