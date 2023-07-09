@@ -38,6 +38,8 @@ The downsampling tasks will log performance information and errors, assuming tha
   * row_count - the numner of rows produced from the query
   * start - the beginning of the time window for the downsampling
   * stop - the end of the time window for the downsamping
+  * source_host - the hostname of the InfluxDB instance that has the data being downsampled
+  * source_measurement - the name of the measurement (table) being downsampled
   
  # Time Behvavior
  The first run of the downsampling will occur based on a combination of wall time and the specified run interval.

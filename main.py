@@ -6,7 +6,7 @@ from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 from influxdb_client_3 import InfluxDBClient3, Point
-from schedule_calculator import get_next_run_time, get_next_run_time_days, get_next_run_time_hours, get_next_run_time_minutes, get_then
+from schedule_calculator import get_next_run_time, get_then
 
 logging_client = None
 source_client = None
@@ -14,6 +14,7 @@ source_measurement = ""
 fields = None
 tags = None
 ignore_schema_cache = False
+source_host = ""
 
 interval = ""
 def parse_interval(interval):
@@ -24,7 +25,6 @@ def parse_interval(interval):
     if t < 1:
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
-
 
 def populate_fields():
     global source_client
@@ -137,13 +137,13 @@ def run(interval_val, interval_type, now=None):
 
     start_time = time.time()
     success, result = get_down_sample_data(query)
-    print(result)
     end_time = time.time()
     query_time = end_time - start_time
     if not success:
         log_query_error(result, now, then, query_gen_time, query_time)
         return
-
+    
+    print(result)
     row_count = len(result)
  
     global logging_client
@@ -154,6 +154,9 @@ def run(interval_val, interval_type, now=None):
 
 def log_run(now, then, query_gen_time, query_time, row_count):
     global interval
+    global source_measurement
+    global source_host
+
     if logging_client is not None:
         point = (Point("task_log")
          .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
@@ -162,23 +165,30 @@ def log_run(now, then, query_gen_time, query_time, row_count):
          .field("query_time",query_time)
          .field("row_count", row_count)
          .tag("error", "none")
+         .tag("source_host", source_host)
+         .tag("source_measurement",source_measurement)
          .tag("interval", interval)
          .tag("task_host",socket.gethostname()))
         
         logging_client.write(point)
 
 def log_query_error(result, now, then, query_gen_time, query_time):
-        global interval
-        if logging_client is not None:
-            point = (Point("task_log")
-            .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
-            .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
-            .field("query_gen_time", query_gen_time)
-            .field("query_time",query_time)
-            .field("exception", result)
-            .tag("error", "query")
-            .tag("interval", interval)
-            .tag("task_host",socket.gethostname()))
+    global interval
+    global source_measurement
+    global source_host
+
+    if logging_client is not None:
+        point = (Point("task_log")
+        .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
+        .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
+        .field("query_gen_time", query_gen_time)
+        .field("query_time",query_time)
+        .field("exception", result)
+        .tag("error", "query")
+        .tag("source_host", source_host)
+        .tag("source_measurement",source_measurement)
+        .tag("interval", interval)
+        .tag("task_host",socket.gethostname()))
 
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
@@ -187,6 +197,9 @@ def setup_source_client():
     org = os.getenv('SOURCE_ORG', 'none')
     global source_measurement
     source_measurement = os.getenv('SOURCE_MEASUREMENT')
+
+    global source_host
+    source_host = host
 
     if None in [host, db, token, source_measurement]:
         print("Source host, database, token, or measurement not defined. Aborting ...")
