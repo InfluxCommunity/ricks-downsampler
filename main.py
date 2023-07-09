@@ -66,7 +66,7 @@ def generate_fields_string(fields_dict):
         if field_is_num(field_name, fields_dict):
             if query != '':
                 query += ',\n'
-            query += f'mean("{field_name}") as "{field_name}"'
+            query += f'\tmean("{field_name}") as "{field_name}"'
     return query
 
 def generate_group_by_string(tags_list, interval):
@@ -91,7 +91,24 @@ def get_tags_query_string():
         populate_tags()
     return generate_group_by_string(tags, interval)
 
+def create_downsampling_query(fields_clause, measurement, then, now, tags_clause):
+    query = f"""
+SELECT
+    {fields_clause}
+FROM
+    {measurement}
+WHERE
+    time > '{then}'
+AND
+    time < '{now}'
+GROUP BY
+    {tags_clause}
+    """
+    return query
+
 def run(interval_val, interval_type, now=None):
+    global source_measurement
+    global interval
     if now is None:
         now = datetime.utcnow()
     now = now.replace(second=0,microsecond=0)
@@ -102,12 +119,12 @@ def run(interval_val, interval_type, now=None):
     start_time = time.time()
     fields_string = get_fields_query_string()
     tag_string = get_tags_query_string()
+    query = create_downsampling_query(fields_string, source_measurement, then, now, tag_string)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
 
-    print(fields_string)
-    print(tag_string)
+    print(query)
 
     global logging_client
     try:
@@ -160,6 +177,7 @@ def setup_schema():
     global ignore_schema_cache
     ignore_schema_cache_opt = os.getenv('NO_SCHEMA_CACHE', "false")
     ignore_schema_cache  = ignore_schema_cache_opt.lower() in ['true', '1']
+
 if __name__ == "__main__":
     # parse the user input
     interval = os.getenv('RUN_INTERVAL')
