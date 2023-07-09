@@ -106,6 +106,17 @@ GROUP BY
     """
     return query
 
+def get_down_sample_data(query):
+    if source_client is None or source_measurement == "":
+        print("Source InfluxDB instane not defined. Existing ...")
+        exit(1)
+    else:
+        try:
+            table = source_client.query(query, language="influxql")
+            return (True, table.to_pandas())
+        except Exception as e:
+            return (False, str(e))
+
 def run(interval_val, interval_type, now=None):
     global source_measurement
     global interval
@@ -124,25 +135,49 @@ def run(interval_val, interval_type, now=None):
 
     query_gen_time = end_time - start_time
 
-    print(query)
+    start_time = time.time()
+    success, result = get_down_sample_data(query)
+    print(result)
+    end_time = time.time()
+    query_time = end_time - start_time
+    if not success:
+        log_query_error(result, now, then, query_gen_time, query_time)
 
+    row_count = len(result)
+ 
     global logging_client
     try:
-        log_run(now, then, query_gen_time)
+        log_run(now, then, query_gen_time, query_time, row_count)
     except Exception as e:
         print(f"Logging failed due to {str(e)}")
 
-def log_run(now, then, query_gen_time):
+def log_run(now, then, query_gen_time, query_time, row_count):
     global interval
     if logging_client is not None:
         point = (Point("task_log")
          .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
          .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
          .field("query_gen_time", query_gen_time)
+         .field("query_time",query_time)
+         .field("row_count", row_count)
+         .tag("error", "none")
          .tag("interval", interval)
          .tag("task_host",socket.gethostname()))
         
         logging_client.write(point)
+
+def log_query_error(result, now, then, query_gen_time, query_time):
+        global interval
+        if logging_client is not None:
+            point = (Point("task_log")
+            .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
+            .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
+            .field("query_gen_time", query_gen_time)
+            .field("query_time",query_time)
+            .field("exception", result)
+            .tag("error", "query")
+            .tag("interval", interval)
+            .tag("task_host",socket.gethostname()))
 
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
