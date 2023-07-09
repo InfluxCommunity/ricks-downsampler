@@ -16,8 +16,9 @@ This code is designed to be run in a container, and uses a collection of environ
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
  * NO_SCHEMA_CACHE - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set. 
 
- ## Logging
- You can set up an influxdb instance to log runs of the downsampling job. To do that, you need to pass in the following envars:
+# Logging
+The downsampling tasks will log performance information and errors, assuming that you provide it with the information that it needs to write those logs to an InfluxDB instance. You do this by proviging the following envars:
+ ## Logging Envars
   * LOG_HOST - the host of the influxdb instance you are using for logging the task runs. This can be the same or a different instance than the one that hosts the data you are downsampling.
   * LOG_DB - the database where you want to store the log information.
   * LOG_TOKEN - a token that can write to that log.
@@ -25,6 +26,19 @@ This code is designed to be run in a container, and uses a collection of environ
 
   If you leave out any of the first three envars (LOG_HOST, LOG_DB, or LOG_TOKEN), logging will simply be skipped.
 
+ ## Logging Schema
+ ### Tags
+  * error - can be "none", "query", or "write", depending on if and where the error was encountered.
+  * task_host - the host of the running task.
+  * interval - the interval of the downsampling (such as 1m, 10m, 1h, etc...)
+  
+ ### Fields
+  * query_gen_time - the amount of time spent generating the query
+  * query_time - the amount of time executing the query and converting the results into a dataframe
+  * row_count - the numner of rows produced from the query
+  * start - the beginning of the time window for the downsampling
+  * stop - the end of the time window for the downsamping
+  
  # Time Behvavior
  The first run of the downsampling will occur based on a combination of wall time and the specified run interval.
 
