@@ -1,5 +1,6 @@
 import unittest
-from main import parse_interval, field_is_num, generate_fields_string, generate_group_by_string
+from main import parse_interval
+from influxql_generator import field_is_num, generate_fields_string, generate_group_by_string
 from schedule_calculator import get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
 from datetime import datetime
 

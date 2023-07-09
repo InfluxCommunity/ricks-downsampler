@@ -25,7 +25,7 @@ The downsampling tasks will log performance information and errors, assuming tha
   * LOG_TOKEN - a token that can write to that log.
   * LOG_ORG - this is only required if you are using InfluxDB Cloud Serverless. 
 
-  If you leave out any of the first three envars (LOG_HOST, LOG_DB, or LOG_TOKEN), logging will simply be skipped.
+  If you leave out any of the first three envars (LOG_HOST, LOG_DB, or LOG_TOKEN), logging will be skipped.
 
  ## Logging Schema
  ### Tags

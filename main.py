@@ -9,6 +9,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
 from influxdb_client_3 import InfluxDBClient3, Point
 from schedule_calculator import get_next_run_time, get_then
+from schema_configuration import populate_fields, populate_tags
+from influxql_generator import get_query
 
 logging_client = None
 source_client = None
@@ -29,87 +31,20 @@ def parse_interval(interval):
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
 
-def populate_fields():
-    global source_client
-    global source_measurement
+def setup_tags_and_fields():
     global fields
-
-    if source_client is None or source_measurement == "":
-        print("Source InfluxDB instane not defined. Existing ...")
-        exit(1)
-    else:
-        query = f'SHOW FIELD KEYS FROM "{source_measurement}"'
-        fields_table = source_client.query(query, language="influxql")
-        fields = dict(zip([f.as_py() for f in fields_table["fieldKey"]], 
-                            [f.as_py() for f in fields_table["fieldType"]]))
-
-def populate_tags():
-    global source_client
-    global source_measurement
     global tags
-    
-    if source_client is None or source_measurement == "":
-        print("Source InfluxDB instane not defined. Existing ...")
-        exit(1)
-    else:
-        query = f'SHOW TAG KEYS FROM "{source_measurement}"'
-        tags_table = source_client.query(query, language="influxql")
-        tags = tags_table["tagKey"]
-    
-def field_is_num(field_name, fields_dict):
-    numeric_types = ['integer', 'float', 'double']
-    field_type = fields_dict.get(field_name)
-    if field_type in numeric_types:
-        return True
-    return False    
-
-def generate_fields_string(fields_dict):
-    query = ''
-    for field_name, field_type in fields_dict.items():
-        if field_is_num(field_name, fields_dict):
-            if query != '':
-                query += ',\n'
-            query += f'\tmean("{field_name}") as "{field_name}"'
-    return query
-
-def generate_group_by_string(tags_list, interval):
-    group_by_clause = f'time({interval})'
-
-    for tag in tags_list:
-        group_by_clause += f', {tag}'
-
-    return group_by_clause
-
-def get_fields_query_string():
-    global fields
     global ignore_schema_cache
+    global source_client
+    global source_measurement
+
     if fields is None or ignore_schema_cache:
-        populate_fields()
-    return generate_fields_string(fields)
+        fields = populate_fields(source_client, source_measurement)
 
-def get_tags_query_string():
-    global tags
-    global interval
     if tags is None or ignore_schema_cache:
-        populate_tags()
-    return generate_group_by_string(tags, interval)
+        tags = populate_tags(source_client, source_measurement)
 
-def create_downsampling_query(fields_clause, measurement, then, now, tags_clause):
-    query = f"""
-SELECT
-    {fields_clause}
-FROM
-    {measurement}
-WHERE
-    time > '{then}'
-AND
-    time < '{now}'
-GROUP BY
-    {tags_clause}
-    """
-    return query
-
-def get_down_sample_data(query):
+def get_down_sampled_data(query):
     if source_client is None or source_measurement == "":
         print("Source InfluxDB instane not defined. Existing ...")
         exit(1)
@@ -123,6 +58,8 @@ def get_down_sample_data(query):
 def run(interval_val, interval_type, now=None):
     global source_measurement
     global interval
+    global fields
+    global tags
 
     if now is None:
         now = datetime.utcnow()
@@ -132,15 +69,15 @@ def run(interval_val, interval_type, now=None):
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 
     start_time = time.time()
-    fields_string = get_fields_query_string()
-    tag_string = get_tags_query_string()
-    query = create_downsampling_query(fields_string, source_measurement, then, now, tag_string)
+
+    setup_tags_and_fields()
+    query = get_query(fields, source_measurement, then, now, tags, interval)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
 
     start_time = time.time()
-    success, result = get_down_sample_data(query)
+    success, result = get_down_sampled_data(query)
     end_time = time.time()
     query_time = end_time - start_time
     if not success:
@@ -234,7 +171,7 @@ def setup_task_id():
     global task_id
     task_id = os.getenv('TASK_ID', ''.join(random.choices(string.ascii_uppercase + string.digits, k=7)))
 
-def setup_schema():
+def setup_no_schema_cache_option():
     global ignore_schema_cache
     ignore_schema_cache_opt = os.getenv('NO_SCHEMA_CACHE', "false")
     ignore_schema_cache  = ignore_schema_cache_opt.lower() in ['true', '1']
@@ -250,7 +187,7 @@ if __name__ == "__main__":
     setup_task_id()
     setup_source_client()
     setup_logging()
-    setup_schema()
+    setup_no_schema_cache_option()
 
     if run_previous:
         now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
