@@ -4,17 +4,17 @@ def get_next_run_time(interval_val, interval_type, now=None, run_previous=False)
     if interval_type == "m":
         t =  get_next_run_time_minutes(interval_val, now)
         if run_previous:
-            t = t.replace(minute=t.minute-interval_val)
+            t = t - timedelta(minutes=interval_val)
         return t
     elif interval_type == "h":
         t = get_next_run_time_hours(interval_val, now)
         if run_previous:
-            t = t.replace(hour=t.hour-interval_val )
+            t = t - timedelta(hours=interval_val)
         return t
     elif interval_type == "d":
         t = get_next_run_time_days(interval_val, now)
         if run_previous:
-            t = t.replace(day=t.date-interval_val)
+            t = t - timedelta(days=interval_val)
         return t
 
 def get_next_run_time_minutes(minutes, now=None):

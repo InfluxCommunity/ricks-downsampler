@@ -15,7 +15,7 @@ class SQLGeneration(unittest.TestCase):
     def test_generate_fields_string(self):
         fields = {'req_bytes': 'integer', 'resp_bytes': 'float', 'status': 'string'}
 
-        expected_result = 'mean("req_bytes") as "req_bytes",\nmean("resp_bytes") as "resp_bytes"'
+        expected_result = '\tmean("req_bytes") as "req_bytes",\n\tmean("resp_bytes") as "resp_bytes"'
         self.assertEqual(generate_fields_string(fields), expected_result)
 
         fields = {'status': 'string'}
