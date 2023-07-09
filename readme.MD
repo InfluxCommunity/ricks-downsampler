@@ -4,7 +4,7 @@ A project to make it easy to downsample with InfluxDB 3.0. It handles running a 
 # Envars
 This code is designed to be run in a container, and uses a collection of environment variables to configure it.
 
-# Required Envars
+## Required Envars
  * RUN_INTERVAL - A string in the form of an InfluxQL time interval. i.e. an integer then a time specifier. Examples: 1m, 6h, 7d. Allowable time specifiers are m (munutes), h (hours), and d (days).
   * SOURCE_HOST - the host of the influxdb instance from which you are downsampling.
   * SOURCE_DB - the database that you want to downsample.
@@ -12,7 +12,7 @@ This code is designed to be run in a container, and uses a collection of environ
   * SOURCE_MEASUREMENY - the name of the measurement (also called "table") to downsample.
   * SOURCE_ORG - the organization (only required if you are using InfluxDB Cloud Serverless).
 
- # Option Envars
+ ## Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
  * NO_SCHEMA_CACHE - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set. 
  * TASK_ID - use for the task_id tag when logging. If not supplied, a random id will be generated on startup.
