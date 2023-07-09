@@ -7,13 +7,14 @@ import random
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
-from influxdb_client_3 import InfluxDBClient3, Point
+from influxdb_client_3 import InfluxDBClient3, Point, SYNCHRONOUS
 from schedule_calculator import get_next_run_time, get_then
 from schema_configuration import populate_fields, populate_tags
 from influxql_generator import get_query
 
 logging_client = None
 source_client = None
+target_client = None
 source_measurement = ""
 fields = None
 tags = None
@@ -153,6 +154,22 @@ def setup_source_client():
         global source_client
         source_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
 
+def setup_target_client():
+    global source_host
+    global source_measurement
+
+    host = os.getenv('TARGET_HOST', source_host)
+    db = os.getenv('TARGET_DB')
+    token = os.getenv('TARGET_TOKEN', os.getenv('SOURCE_TOKEN'))
+    org = os.getenv('TARGET_ORG', 'none')
+
+    if None in [host, db, token, source_measurement]:
+        print("Target host, database, token, or measurement not defined. Aborting ...")
+        exit(1)
+    else:
+        global target_client
+        target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=SYNCHRONOUS)
+
 def setup_logging():
     host = os.getenv('LOG_HOST')
     db = os.getenv('LOG_DB')
@@ -186,6 +203,7 @@ if __name__ == "__main__":
 
     setup_task_id()
     setup_source_client()
+    setup_target_client()
     setup_logging()
     setup_no_schema_cache_option()
 
