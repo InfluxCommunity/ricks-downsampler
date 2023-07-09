@@ -2,6 +2,8 @@ import os
 import re
 import socket
 import time
+import string
+import random
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
@@ -15,8 +17,9 @@ fields = None
 tags = None
 ignore_schema_cache = False
 source_host = ""
-
+task_id = "" 
 interval = ""
+
 def parse_interval(interval):
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
@@ -120,6 +123,7 @@ def get_down_sample_data(query):
 def run(interval_val, interval_type, now=None):
     global source_measurement
     global interval
+
     if now is None:
         now = datetime.utcnow()
     now = now.replace(second=0,microsecond=0)
@@ -156,6 +160,7 @@ def log_run(now, then, query_gen_time, query_time, row_count):
     global interval
     global source_measurement
     global source_host
+    global task_id
 
     if logging_client is not None:
         point = (Point("task_log")
@@ -164,6 +169,7 @@ def log_run(now, then, query_gen_time, query_time, row_count):
          .field("query_gen_time", query_gen_time)
          .field("query_time",query_time)
          .field("row_count", row_count)
+         .tag("task_id", task_id)
          .tag("error", "none")
          .tag("source_host", source_host)
          .tag("source_measurement",source_measurement)
@@ -176,6 +182,7 @@ def log_query_error(result, now, then, query_gen_time, query_time):
     global interval
     global source_measurement
     global source_host
+    global task_id
 
     if logging_client is not None:
         point = (Point("task_log")
@@ -185,6 +192,7 @@ def log_query_error(result, now, then, query_gen_time, query_time):
         .field("query_time",query_time)
         .field("exception", result)
         .tag("error", "query")
+        .tag("task_id", task_id)
         .tag("source_host", source_host)
         .tag("source_measurement",source_measurement)
         .tag("interval", interval)
@@ -222,6 +230,10 @@ def setup_logging():
         global interval
         interval = os.getenv('RUN_INTERVAL')
 
+def setup_task_id():
+    global task_id
+    task_id = os.getenv('TASK_ID', ''.join(random.choices(string.ascii_uppercase + string.digits, k=7)))
+
 def setup_schema():
     global ignore_schema_cache
     ignore_schema_cache_opt = os.getenv('NO_SCHEMA_CACHE', "false")
@@ -235,6 +247,7 @@ if __name__ == "__main__":
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
     run_previous = run_previous_opt.lower() in ['true', '1']
 
+    setup_task_id()
     setup_source_client()
     setup_logging()
     setup_schema()

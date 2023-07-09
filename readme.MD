@@ -15,6 +15,7 @@ This code is designed to be run in a container, and uses a collection of environ
  # Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
  * NO_SCHEMA_CACHE - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set. 
+ * TASK_ID - use for the task_id tag when logging. If not supplied, a random id will be generated on startup.
 
 # Logging
 The downsampling tasks will log performance information and errors, assuming that you provide it with the information that it needs to write those logs to an InfluxDB instance. You do this by proviging the following envars:
@@ -30,7 +31,8 @@ The downsampling tasks will log performance information and errors, assuming tha
  ### Tags
   * error - can be "none", "query", or "write", depending on if and where the error was encountered.
   * task_host - the host of the running task.
-  * interval - the interval of the downsampling (such as 1m, 10m, 1h, etc...)
+  * interval - the interval of the downsampling (such as 1m, 10m, 1h, etc...).
+  * task_id - identifies the running downsampling task.
   
  ### Fields
   * query_gen_time - the amount of time spent generating the query
@@ -40,7 +42,7 @@ The downsampling tasks will log performance information and errors, assuming tha
   * stop - the end of the time window for the downsamping
   * source_host - the hostname of the InfluxDB instance that has the data being downsampled
   * source_measurement - the name of the measurement (table) being downsampled
-  
+
  # Time Behvavior
  The first run of the downsampling will occur based on a combination of wall time and the specified run interval.
 
