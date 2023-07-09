@@ -6,6 +6,10 @@ This code is designed to be run in a container, and uses a collection of environ
 
 # Required Envars
  * RUN_INTERVAL - A string in the form of an InfluxQL time interval. i.e. an integer then a time specifier. Examples: 1m, 6h, 7d. Allowable time specifiers are m (munutes), h (hours), and d (days).
+  * SOURCE_HOST - the host of the influxdb instance from which you are downsampling.
+  * SOURCE_DB - the database that you want to downsample.
+  * SOURCE_TOKEN - a token that read the database you want to downsample.
+  * SOURCE_ORG - the organization (only required if you are using InfluxDB Cloud Serverless).
 
  # Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.

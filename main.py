@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from influxdb_client_3 import InfluxDBClient3, Point
 
 logging_client = None
+source_client = None
+source_measurement = ""
+
 interval = ""
 def parse_interval(interval):
     match = re.fullmatch(r'(\d+)([mhd])', interval)
@@ -72,9 +75,9 @@ def run(interval_val, interval_type, now=None):
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
-    global logging_client
-
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+
+    global logging_client
     try:
         log_run(now, then)
     except Exception as e:
@@ -90,6 +93,21 @@ def log_run(now, then):
          .tag("task_host",socket.gethostname()))
         
         logging_client.write(point)
+
+def setup_source_client():
+    host = os.getenv('SOURCE_HOST')
+    db = os.getenv('SOURCE_DB')
+    token = os.getenv('SOURCE_TOKEN')
+    org = os.getenv('SOURCE_ORG', 'none')
+    global source_measurement
+    source_measurement = os.getenv('SOOURCE_MEASUREMENT')
+
+    if None in [host, db, token, source_measurement]:
+        print("Source host, database, token, or measurement not defined. Aborting ...")
+        exit(1)
+    else:
+        global source_client
+        source_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
 
 def setup_logging():
     host = os.getenv('LOG_HOST')
@@ -113,6 +131,7 @@ if __name__ == "__main__":
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
     run_previous = run_previous_opt.lower() in ['true', '1']
 
+    setup_source_client()
     setup_logging()
     
     if run_previous:
