@@ -12,6 +12,8 @@ logging_client = None
 source_client = None
 source_measurement = ""
 fields = None
+tags = None
+ignore_schema_cache = False
 
 interval = ""
 def parse_interval(interval):
@@ -38,6 +40,19 @@ def populate_fields():
         fields = dict(zip([f.as_py() for f in fields_table["fieldKey"]], 
                             [f.as_py() for f in fields_table["fieldType"]]))
 
+def populate_tags():
+    global source_client
+    global source_measurement
+    global tags
+    
+    if source_client is None or source_measurement == "":
+        print("Source InfluxDB instane not defined. Existing ...")
+        exit(1)
+    else:
+        query = f'SHOW TAG KEYS FROM "{source_measurement}"'
+        tags_table = source_client.query(query, language="influxql")
+        tags = tags_table["tagKey"]
+    
 def field_is_num(field_name, fields_dict):
     numeric_types = ['integer', 'float', 'double']
     field_type = fields_dict.get(field_name)
@@ -54,11 +69,27 @@ def generate_fields_string(fields_dict):
             query += f'mean("{field_name}") as "{field_name}"'
     return query
 
+def generate_group_by_string(tags_list, interval):
+    group_by_clause = f'time({interval})'
+
+    for tag in tags_list:
+        group_by_clause += f', {tag}'
+
+    return group_by_clause
+
 def get_fields_query_string():
     global fields
-    if fields is None:
+    global ignore_schema_cache
+    if fields is None or ignore_schema_cache:
         populate_fields()
     return generate_fields_string(fields)
+
+def get_tags_query_string():
+    global tags
+    global interval
+    if tags is None or ignore_schema_cache:
+        populate_tags()
+    return generate_group_by_string(tags, interval)
 
 def run(interval_val, interval_type, now=None):
     if now is None:
@@ -70,11 +101,13 @@ def run(interval_val, interval_type, now=None):
 
     start_time = time.time()
     fields_string = get_fields_query_string()
+    tag_string = get_tags_query_string()
     end_time = time.time()
 
     query_gen_time = end_time - start_time
 
     print(fields_string)
+    print(tag_string)
 
     global logging_client
     try:
@@ -123,6 +156,10 @@ def setup_logging():
         global interval
         interval = os.getenv('RUN_INTERVAL')
 
+def setup_schema():
+    global ignore_schema_cache
+    ignore_schema_cache_opt = os.getenv('NO_SCHEMA_CACHE', "false")
+    ignore_schema_cache  = ignore_schema_cache_opt.lower() in ['true', '1']
 if __name__ == "__main__":
     # parse the user input
     interval = os.getenv('RUN_INTERVAL')
@@ -133,11 +170,11 @@ if __name__ == "__main__":
 
     setup_source_client()
     setup_logging()
-    
+    setup_schema()
+
     if run_previous:
         now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
         run(interval_val, interval_type, now=now)
-
 
     # set the start date based on the interval type
     # set the values for the intervals

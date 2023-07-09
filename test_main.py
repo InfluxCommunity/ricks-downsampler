@@ -1,5 +1,5 @@
 import unittest
-from main import parse_interval, field_is_num, generate_fields_string
+from main import parse_interval, field_is_num, generate_fields_string, generate_group_by_string
 from schedule_calculator import get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
 from datetime import datetime
 
@@ -26,6 +26,15 @@ class SQLGeneration(unittest.TestCase):
         expected_result = ''
         self.assertEqual(generate_fields_string(fields), expected_result)
 
+    def test_generate_group_by_clause(self):
+        tags = ['tag1', 'tag2', 'tag3']
+        interval = '5m'
+        expected_result = 'time(5m), tag1, tag2, tag3'
+        self.assertEqual(generate_group_by_string(tags, interval), expected_result)
+
+        tags = []
+        expected_result = 'time(5m)'
+        self.assertEqual(generate_group_by_string(tags, interval), expected_result)
 
 class TestParseInterval(unittest.TestCase):
     def test_positive_case(self):

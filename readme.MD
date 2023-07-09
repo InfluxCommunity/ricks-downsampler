@@ -14,6 +14,7 @@ This code is designed to be run in a container, and uses a collection of environ
 
  # Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
+ * NO_SCHEMA_CACHE - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set. 
 
  ## Logging
  You can set up an influxdb instance to log runs of the downsampling job. To do that, you need to pass in the following envars:
