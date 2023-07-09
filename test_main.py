@@ -1,7 +1,31 @@
 import unittest
-from main import parse_interval
+from main import parse_interval, field_is_num, generate_fields_string
 from schedule_calculator import get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
 from datetime import datetime
+
+class SQLGeneration(unittest.TestCase):
+    def test_field_is_num(self):
+        fields = {'req_bytes': 'integer', 'resp_bytes': 'float', 'status': 'string'}
+        
+        self.assertTrue(field_is_num('req_bytes', fields))
+        self.assertTrue(field_is_num('resp_bytes', fields))
+        self.assertFalse(field_is_num('status', fields))
+        self.assertFalse(field_is_num('non_existent_field', fields))
+
+    def test_generate_fields_string(self):
+        fields = {'req_bytes': 'integer', 'resp_bytes': 'float', 'status': 'string'}
+
+        expected_result = 'mean("req_bytes") as "req_bytes",\nmean("resp_bytes") as "resp_bytes"'
+        self.assertEqual(generate_fields_string(fields), expected_result)
+
+        fields = {'status': 'string'}
+        expected_result = ''
+        self.assertEqual(generate_fields_string(fields), expected_result)
+
+        fields = {}
+        expected_result = ''
+        self.assertEqual(generate_fields_string(fields), expected_result)
+
 
 class TestParseInterval(unittest.TestCase):
     def test_positive_case(self):

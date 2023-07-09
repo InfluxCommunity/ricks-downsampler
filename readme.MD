@@ -9,6 +9,7 @@ This code is designed to be run in a container, and uses a collection of environ
   * SOURCE_HOST - the host of the influxdb instance from which you are downsampling.
   * SOURCE_DB - the database that you want to downsample.
   * SOURCE_TOKEN - a token that read the database you want to downsample.
+  * SOURCE_MEASUREMENY - the name of the measurement (also called "table") to downsample.
   * SOURCE_ORG - the organization (only required if you are using InfluxDB Cloud Serverless).
 
  # Option Envars

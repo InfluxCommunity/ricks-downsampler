@@ -1,6 +1,7 @@
 import os
 import re
 import socket
+import time
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
@@ -10,6 +11,7 @@ from schedule_calculator import get_next_run_time, get_next_run_time_days, get_n
 logging_client = None
 source_client = None
 source_measurement = ""
+fields = None
 
 interval = ""
 def parse_interval(interval):
@@ -21,7 +23,43 @@ def parse_interval(interval):
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
 
-    
+
+def populate_fields():
+    global source_client
+    global source_measurement
+    global fields
+
+    if source_client is None or source_measurement == "":
+        print("Source InfluxDB instane not defined. Existing ...")
+        exit(1)
+    else:
+        query = f'SHOW FIELD KEYS FROM "{source_measurement}"'
+        fields_table = source_client.query(query, language="influxql")
+        fields = dict(zip([f.as_py() for f in fields_table["fieldKey"]], 
+                            [f.as_py() for f in fields_table["fieldType"]]))
+
+def field_is_num(field_name, fields_dict):
+    numeric_types = ['integer', 'float', 'double']
+    field_type = fields_dict.get(field_name)
+    if field_type in numeric_types:
+        return True
+    return False    
+
+def generate_fields_string(fields_dict):
+    query = ''
+    for field_name, field_type in fields_dict.items():
+        if field_is_num(field_name, fields_dict):
+            if query != '':
+                query += ',\n'
+            query += f'mean("{field_name}") as "{field_name}"'
+    return query
+
+def get_fields_query_string():
+    global fields
+    if fields is None:
+        populate_fields()
+    return generate_fields_string(fields)
+
 def run(interval_val, interval_type, now=None):
     if now is None:
         now = datetime.utcnow()
@@ -30,18 +68,27 @@ def run(interval_val, interval_type, now=None):
 
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 
+    start_time = time.time()
+    fields_string = get_fields_query_string()
+    end_time = time.time()
+
+    query_gen_time = end_time - start_time
+
+    print(fields_string)
+
     global logging_client
     try:
-        log_run(now, then)
+        log_run(now, then, query_gen_time)
     except Exception as e:
         print(f"Logging failed due to {str(e)}")
 
-def log_run(now, then):
+def log_run(now, then, query_gen_time):
     global interval
     if logging_client is not None:
         point = (Point("task_log")
          .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
          .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
+         .field("query_gen_time", query_gen_time)
          .tag("interval", interval)
          .tag("task_host",socket.gethostname()))
         
