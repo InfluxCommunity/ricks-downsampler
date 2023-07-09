@@ -1,5 +1,6 @@
 import unittest
-from main import parse_interval, get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
+from main import parse_interval
+from schedule_calculator import get_next_run_time_minutes, get_next_run_time_hours, get_next_run_time, get_then
 from datetime import datetime
 
 class TestParseInterval(unittest.TestCase):
