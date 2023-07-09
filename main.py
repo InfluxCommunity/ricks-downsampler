@@ -21,7 +21,6 @@ def parse_interval(interval):
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
 
-
     
 def run(interval_val, interval_type, now=None):
     if now is None:
@@ -54,7 +53,7 @@ def setup_source_client():
     token = os.getenv('SOURCE_TOKEN')
     org = os.getenv('SOURCE_ORG', 'none')
     global source_measurement
-    source_measurement = os.getenv('SOOURCE_MEASUREMENT')
+    source_measurement = os.getenv('SOURCE_MEASUREMENT')
 
     if None in [host, db, token, source_measurement]:
         print("Source host, database, token, or measurement not defined. Aborting ...")
