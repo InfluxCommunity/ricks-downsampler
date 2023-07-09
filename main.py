@@ -142,6 +142,7 @@ def run(interval_val, interval_type, now=None):
     query_time = end_time - start_time
     if not success:
         log_query_error(result, now, then, query_gen_time, query_time)
+        return
 
     row_count = len(result)
  
