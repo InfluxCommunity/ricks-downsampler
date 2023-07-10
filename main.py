@@ -7,7 +7,7 @@ import random
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
-from influxdb_client_3 import InfluxDBClient3, Point, SYNCHRONOUS
+from influxdb_client_3 import InfluxDBClient3, Point, SYNCHRONOUS, write_client_options
 from schedule_calculator import get_next_run_time, get_then
 from schema_configuration import populate_fields, populate_tags
 from influxql_generator import get_query
@@ -16,6 +16,7 @@ logging_client = None
 source_client = None
 target_client = None
 source_measurement = ""
+target_measurement = ""
 fields = None
 tags = None
 ignore_schema_cache = False
@@ -52,16 +53,14 @@ def get_down_sampled_data(query):
     else:
         try:
             table = source_client.query(query, language="influxql")
-            return (True, table.to_pandas())
+            df = table.to_pandas()
+            if 'iox::measurement' in df.columns:
+                df = df.drop('iox::measurement', axis=1)
+            return (True, df)
         except Exception as e:
             return (False, str(e))
 
 def run(interval_val, interval_type, now=None):
-    global source_measurement
-    global interval
-    global fields
-    global tags
-
     if now is None:
         now = datetime.utcnow()
     now = now.replace(second=0,microsecond=0)
@@ -69,72 +68,78 @@ def run(interval_val, interval_type, now=None):
 
     print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 
+    # generate the query
     start_time = time.time()
-
     setup_tags_and_fields()
+    log_tags = [("task_id", task_id),
+                ("source_host", source_host),
+                ("source_measurement",source_measurement),
+                ("target_measurement",target_measurement),
+                ("interval", interval),
+                ("task_host",socket.gethostname())]
+    
+    log_fields =  [("start", then.strftime('%Y-%m-%dT%H:%M:%SZ')),
+                    ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
+
     query = get_query(fields, source_measurement, then, now, tags, interval)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
+    log_fields.append(("query_gen_time",query_gen_time))
 
+    # execute the query
     start_time = time.time()
     success, result = get_down_sampled_data(query)
     end_time = time.time()
     query_time = end_time - start_time
-    if not success:
-        log_query_error(result, now, then, query_gen_time, query_time)
-        return
-    
+    log_fields.append(("query_time", query_time))
+
     print(result)
+
+    if not success:
+        log_tags.append(("error","query"))
+        log_tags.append(("exception",result))
+        log("task_log", log_tags, log_fields)
+        return
     row_count = len(result)
+    log_fields.append(("row_count",row_count))
+
+    #write the downsampled data
+    start_time = time.time()
+    success, msg  = write_downsampled_data(result)
+    end_time = time.time()
+    write_time = end_time - start_time
+    log_fields.append(("write_time", write_time))
+    if not success:
+        print(msg)
+        log_tags.append(("error","write"))
+        log_tags.append(("exception",msg))
+        log("task_log", log_tags, log_fields)
+        return
  
-    global logging_client
+    #log the results
+    log_tags.append(("error","none"))
+    log("task_log", log_tags, log_fields)
+
+def write_downsampled_data(data):
     try:
-        log_run(now, then, query_gen_time, query_time, row_count)
+        print("about to write")
+        target_client.write(record=data,
+                            data_frame_measurement_name=target_measurement,
+                            data_frame_timestamp_column="time",
+                            data_frame_tag_columns=tags.to_pylist())
+        print("wrote")
+        return True, None
     except Exception as e:
-        print(f"Logging failed due to {str(e)}")
+        return False, str(e)
 
-def log_run(now, then, query_gen_time, query_time, row_count):
-    global interval
-    global source_measurement
-    global source_host
-    global task_id
-
-    if logging_client is not None:
-        point = (Point("task_log")
-         .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
-         .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
-         .field("query_gen_time", query_gen_time)
-         .field("query_time",query_time)
-         .field("row_count", row_count)
-         .tag("task_id", task_id)
-         .tag("error", "none")
-         .tag("source_host", source_host)
-         .tag("source_measurement",source_measurement)
-         .tag("interval", interval)
-         .tag("task_host",socket.gethostname()))
-        
-        logging_client.write(point)
-
-def log_query_error(result, now, then, query_gen_time, query_time):
-    global interval
-    global source_measurement
-    global source_host
-    global task_id
-
-    if logging_client is not None:
-        point = (Point("task_log")
-        .field("start", then.strftime('%Y-%m-%dT%H:%M:%SZ'))
-        .field("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))
-        .field("query_gen_time", query_gen_time)
-        .field("query_time",query_time)
-        .field("exception", result)
-        .tag("error", "query")
-        .tag("task_id", task_id)
-        .tag("source_host", source_host)
-        .tag("source_measurement",source_measurement)
-        .tag("interval", interval)
-        .tag("task_host",socket.gethostname()))
+def log(measurement, tags, fields):
+    point = Point(measurement)
+    for field in fields:
+        point.field(field[0], field[1])
+    for tag in tags:
+        point.tag(tag[0], tag[1])
+    logging_client.write(point)
 
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
@@ -157,18 +162,26 @@ def setup_source_client():
 def setup_target_client():
     global source_host
     global source_measurement
+    global target_measurement
 
     host = os.getenv('TARGET_HOST', source_host)
     db = os.getenv('TARGET_DB')
     token = os.getenv('TARGET_TOKEN', os.getenv('SOURCE_TOKEN'))
     org = os.getenv('TARGET_ORG', 'none')
+    target_measurement = os.getenv('TARGET_MEASUREMENT', source_measurement)
 
     if None in [host, db, token, source_measurement]:
         print("Target host, database, token, or measurement not defined. Aborting ...")
         exit(1)
     else:
         global target_client
-        target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=SYNCHRONOUS)
+        wco = write_client_options(error_callback=write_error, success_callback=write_success)
+        target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=wco)
+def write_error(one, two, three):
+    print("error", one)
+
+def write_success(one, two):
+    print("success", one)
 
 def setup_logging():
     host = os.getenv('LOG_HOST')
