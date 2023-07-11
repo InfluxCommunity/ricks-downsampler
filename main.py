@@ -131,6 +131,7 @@ def write_downsampled_data(data):
         print("wrote")
         return True, None
     except Exception as e:
+        print("write exception caught")
         return False, str(e)
 
 def log(measurement, tags, fields):
@@ -175,8 +176,9 @@ def setup_target_client():
         exit(1)
     else:
         global target_client
-        wco = write_client_options(error_callback=write_error, success_callback=write_success)
+        wco = write_client_options(r)
         target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=wco)
+
 def write_error(one, two, three):
     print("error", one)
 

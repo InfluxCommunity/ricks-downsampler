@@ -10,12 +10,15 @@ This code is designed to be run in a container, and uses a collection of environ
   * SOURCE_DB - the database that you want to downsample.
   * SOURCE_TOKEN - a token that read the database you want to downsample.
   * SOURCE_MEASUREMENY - the name of the measurement (also called "table") to downsample.
-  * SOURCE_ORG - the organization (only required if you are using InfluxDB Cloud Serverless).
+  * TARGET_DB - the name of the database to which to write the downsampled data
 
  ## Option Envars
  * RUN_PREVIOUS_INTERVAL - If "true" the task will immediately run the previous time internval. See below.
  * NO_SCHEMA_CACHE - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set. 
  * TASK_ID - use for the task_id tag when logging. If not supplied, a random id will be generated on startup.
+ * TARGET_HOST - if you wish to downsample to a different influxdb instance, you can provide a different host
+ * TARGET_TOKEN - if you wish to supply a different write token, you can supply it, especially if you are targeting a different host.
+ * TARGET_MEASUREMENT - if you wish to supply a different name for downsampled measurement, otherwise, it will use the name of the source measurement.
 
 # Logging
 The downsampling tasks will log performance information and errors, assuming that you provide it with the information that it needs to write those logs to an InfluxDB instance. You do this by proviging the following envars:
