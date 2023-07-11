@@ -76,6 +76,7 @@ def run(interval_val, interval_type, now=None):
                 ("source_measurement",source_measurement),
                 ("target_measurement",target_measurement),
                 ("interval", interval),
+                ("task_id", task_id),
                 ("task_host",socket.gethostname())]
     
     log_fields =  [("start", then.strftime('%Y-%m-%dT%H:%M:%SZ')),
