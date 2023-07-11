@@ -15,8 +15,7 @@ This code is designed to be run in a container, and uses a collection of environ
 * `SOURCE_MEASUREMENT` - the name of the measurement (also called "table") to downsample.
 * `TARGET_DB` - the name of the database to which to write the downsampled data
 
-## Option Envars
-
+## Optional Envars
 * `RUN_PREVIOUS_INTERVAL` - If "true" the task will immediately run the previous time interval. See below.
 * `NO_SCHEMA_CACHE` - If "true" the task will not persist schema information between runs. Defaults to false. This allows the downsampling to adapt to schema changes on the fly, but incurs a performance penalty of 2 extra metadata queries. Ignored if TAGS, INCLUDE_FIELDS, or EXCLUDE_FIELDS was set.
 * `TASK_ID` - use for the task_id tag when logging. If not supplied, a random id will be generated on startup.

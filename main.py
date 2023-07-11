@@ -52,11 +52,9 @@ def get_down_sampled_data(query):
         exit(1)
     else:
         try:
-            table = source_client.query(query, language="influxql")
-            df = table.to_pandas()
-            if 'iox::measurement' in df.columns:
-                df = df.drop('iox::measurement', axis=1)
-            return (True, df)
+            reader = source_client.query(query, language="influxql", mode="chunk")
+            print(type(reader))
+            return (True, reader)
         except Exception as e:
             return (False, str(e))
 
@@ -90,49 +88,57 @@ def run(interval_val, interval_type, now=None):
 
     # execute the query
     start_time = time.time()
-    success, result = get_down_sampled_data(query)
+    success, reader = get_down_sampled_data(query)
     end_time = time.time()
     query_time = end_time - start_time
     log_fields.append(("query_time", query_time))
 
-    print(result)
-
     if not success:
         log_tags.append(("error","query"))
-        log_tags.append(("exception",result))
+        log_tags.append(("exception",reader))
         log("task_log", log_tags, log_fields)
         return
-    row_count = len(result)
-    log_fields.append(("row_count",row_count))
+    # row_count = len(reader)
+    # log_fields.append(("row_count",row_count))
 
     #write the downsampled data
     start_time = time.time()
-    success, msg  = write_downsampled_data(result)
+
+    # if success if false, result is an error string
+    # otherwise results is the count of rows written
+    success, result  = write_downsampled_data(reader)
     end_time = time.time()
     write_time = end_time - start_time
     log_fields.append(("write_time", write_time))
     if not success:
-        print(msg)
         log_tags.append(("error","write"))
-        log_tags.append(("exception",msg))
+        log_tags.append(("exception",result))
         log("task_log", log_tags, log_fields)
         return
- 
+    log_fields.append(("row_count", result))
     #log the results
-    log_tags.append(("error","none"))
     log("task_log", log_tags, log_fields)
 
-def write_downsampled_data(data):
+def write_downsampled_data(reader):
+    row_count = 0
     try:
-        print("about to write")
-        target_client.write(record=data,
-                            data_frame_measurement_name=target_measurement,
-                            data_frame_timestamp_column="time",
-                            data_frame_tag_columns=tags.to_pylist())
-        print("wrote")
-        return True, None
+        while True:
+            batch, buff = reader.read_chunk()
+
+            df = batch.to_pandas()
+            row_count += df.shape[0]
+            if 'iox::measurement' in df.columns:
+                df = df.drop('iox::measurement', axis=1)
+            target_client.write(record=df,
+                                data_frame_measurement_name=target_measurement,
+                                data_frame_timestamp_column="time",
+                                data_frame_tag_columns=tags.to_pylist())
+
+    except StopIteration as e:
+        return True, row_count
     except Exception as e:
         print("write exception caught")
+        print(e)
         return False, str(e)
 
 def log(measurement, tags, fields):
@@ -159,6 +165,7 @@ def setup_source_client():
         exit(1)
     else:
         global source_client
+        
         source_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
 
 def setup_target_client():
@@ -177,14 +184,8 @@ def setup_target_client():
         exit(1)
     else:
         global target_client
-        wco = write_client_options(r)
+        wco = write_client_options(write_options=SYNCHRONOUS)
         target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=wco)
-
-def write_error(one, two, three):
-    print("error", one)
-
-def write_success(one, two):
-    print("success", one)
 
 def setup_logging():
     host = os.getenv('LOG_HOST')
