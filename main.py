@@ -53,7 +53,6 @@ def get_down_sampled_data(query):
     else:
         try:
             reader = source_client.query(query, language="influxql", mode="chunk")
-            print(type(reader))
             return (True, reader)
         except Exception as e:
             return (False, str(e))
@@ -64,7 +63,7 @@ def run(interval_val, interval_type, now=None):
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
-    print(f"{then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp with be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.")
 
     # generate the query
     start_time = time.time()
@@ -88,18 +87,22 @@ def run(interval_val, interval_type, now=None):
 
     # execute the query
     start_time = time.time()
+
+    # get_downsampled data will return an arrow stream reader if successful
+    # if success == false, reader will be an exception string
     success, reader = get_down_sampled_data(query)
     end_time = time.time()
     query_time = end_time - start_time
     log_fields.append(("query_time", query_time))
 
     if not success:
+        exception_string = reader
         log_tags.append(("error","query"))
-        log_tags.append(("exception",reader))
+        log_tags.append(("exception",exception_string))
         log("task_log", log_tags, log_fields)
+        print(f"Downsampling job failed with {exception_string}")
         return
-    # row_count = len(reader)
-    # log_fields.append(("row_count",row_count))
+
 
     #write the downsampled data
     start_time = time.time()
@@ -114,10 +117,12 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","write"))
         log_tags.append(("exception",result))
         log("task_log", log_tags, log_fields)
+        print("Downsampling job failed with P{result}")
         return
     log_fields.append(("row_count", result))
     #log the results
     log("task_log", log_tags, log_fields)
+    print(f"Downsampling job run successfully for {result} rows")
 
 def write_downsampled_data(reader):
     row_count = 0
