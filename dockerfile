@@ -10,7 +10,7 @@ ADD ./requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Add the current directory contents into the container at /app
-ADD ./main.py /main.py
+COPY . .
 
 # Run the app using Gunicorn
 CMD ["python", "/main.py"]
