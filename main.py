@@ -98,7 +98,7 @@ def run(interval_val, interval_type, now=None):
     if not success:
         exception_string = reader
         log_tags.append(("error","query"))
-        log_tags.append(("exception",exception_string))
+        log_fields.append(("exception",exception_string))
         log("task_log", log_tags, log_fields)
         print(f"Downsampling job failed with {exception_string}")
         return
