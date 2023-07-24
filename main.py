@@ -80,6 +80,7 @@ def run(interval_val, interval_type, now=None):
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
     query = get_query(fields, source_measurement, then, now, tags, interval)
+    print(query)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
@@ -260,6 +261,7 @@ if __name__ == "__main__":
                         minutes=interval_settings["minutes"], 
                         seconds=0,
                         start_date=start_date,
-                        args = [interval_val, interval_type]
+                        args = [interval_val, interval_type],
+                        max_instances=10
                         )
     scheduler.start()
