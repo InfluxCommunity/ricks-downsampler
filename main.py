@@ -117,7 +117,7 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","write"))
         log_tags.append(("exception",result))
         log("task_log", log_tags, log_fields)
-        print("Downsampling job failed with {result}")
+        print(f"Downsampling job failed with {result}")
         return
     log_fields.append(("row_count", result))
     #log the results
@@ -157,7 +157,7 @@ def log(measurement, tags, fields):
         logging_client.write(point)
     except Exception as e:
         print(f"Logging failed with exception {str(e)}")
-        
+
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
     db = os.getenv('SOURCE_DB')
