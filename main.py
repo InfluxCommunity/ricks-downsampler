@@ -4,9 +4,10 @@ import socket
 import time
 import string
 import random
+from dateutil.parser import parse
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from influxdb_client_3 import InfluxDBClient3, Point, SYNCHRONOUS, write_client_options
 from schedule_calculator import get_next_run_time, get_then
 from schema_configuration import populate_fields, populate_tags
@@ -25,6 +26,7 @@ task_id = ""
 interval = ""
 
 def parse_interval(interval):
+    interval = os.getenv('RUN_INTERVAL')
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
         raise ValueError(f'Invalid format: {interval}')
@@ -59,11 +61,11 @@ def get_down_sampled_data(query):
 
 def run(interval_val, interval_type, now=None):
     if now is None:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
-    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp with be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.")
+    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp will be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.")
 
     # generate the query
     start_time = time.time()
@@ -80,7 +82,6 @@ def run(interval_val, interval_type, now=None):
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
     query = get_query(fields, source_measurement, then, now, tags, interval)
-    print(query)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
@@ -220,24 +221,30 @@ def setup_no_schema_cache_option():
     ignore_schema_cache_opt = os.getenv('NO_SCHEMA_CACHE', "false")
     ignore_schema_cache  = ignore_schema_cache_opt.lower() in ['true', '1']
 
-if __name__ == "__main__":
-    # parse the user input
-    interval = os.getenv('RUN_INTERVAL')
-    interval_val, interval_type = parse_interval(interval)
+def backfill(interval_val, interval_type):
+    backfill_start = os.getenv('BACKFILL_START')
+    if backfill_start is not None:
+        try:
+            then =  parse(backfill_start)
 
+            while then < datetime.now(timezone.utc):
+                then = get_next_run_time(interval_val, interval_type, then)
+                run(interval_val, interval_type, now=then)
+            exit(0)    
+
+        except Exception as e:
+            print(e)
+            print(f"BACKFILL_START not readable. Use '2023-07-24T16:20:00Z' format")
+            exit(1)
+
+def run_previous_interval(interval_val, interval_type):
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
     run_previous = run_previous_opt.lower() in ['true', '1']
-
-    setup_task_id()
-    setup_source_client()
-    setup_target_client()
-    setup_logging()
-    setup_no_schema_cache_option()
-
     if run_previous:
         now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
         run(interval_val, interval_type, now=now)
 
+def schedue_and_run(interval_val, interval_type):
     # set the start date based on the interval type
     # set the values for the intervals
     start_date = datetime.now()
@@ -265,3 +272,23 @@ if __name__ == "__main__":
                         max_instances=10
                         )
     scheduler.start()
+
+if __name__ == "__main__":
+    
+    interval_val, interval_type = parse_interval(interval)
+
+    # parse input and setup global resources
+    setup_task_id()
+    setup_source_client()
+    setup_target_client()
+    setup_logging()
+    setup_no_schema_cache_option()
+
+    # run as backfill job and excit if defined by the user
+    backfill(interval_val, interval_type)
+
+    # run the previous interval if requested by the user
+    run_previous_interval(interval_val, interval_type)
+
+    # start the job and run forever
+    schedue_and_run(interval_val, interval_type)

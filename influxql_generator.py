@@ -1,3 +1,4 @@
+from datetime import timezone
 def generate_fields_string(fields_dict):
     query = ''
     for field_name, field_type in fields_dict.items():
@@ -24,12 +25,13 @@ SELECT
 FROM
     {measurement}
 WHERE
-    time > '{then}'
+    time > '{then.strftime('%Y-%m-%d %H:%M:%S')}'
 AND
-    time < '{now}'
+    time < '{now.strftime('%Y-%m-%d %H:%M:%S')}'
 GROUP BY
     {tags_clause}
     """
+    
     return query
 
 def field_is_num(field_name, fields_dict):
