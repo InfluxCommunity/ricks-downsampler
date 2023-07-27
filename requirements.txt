@@ -1,3 +1,4 @@
 influxdb3-python
 pandas
 apscheduler
+python-dateutil
