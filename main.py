@@ -82,6 +82,7 @@ def run(interval_val, interval_type, now=None):
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
     query = get_query(fields, source_measurement, then, now, tags, interval)
+    print(query)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
@@ -223,14 +224,22 @@ def setup_no_schema_cache_option():
 
 def backfill(interval_val, interval_type):
     backfill_start = os.getenv('BACKFILL_START')
-    if backfill_start is not None:
-        try:
-            then =  parse(backfill_start)
+    backfill_end = os.getenv('BACKFILL_END')
 
-            while then < datetime.now(timezone.utc):
+    
+    if backfill_start is not None:
+        if backfill_end is None:
+            backfill_end = datetime.now(timezone.utc)
+        else:
+            backfill_end = parse(backfill_end).astimezone(timezone.utc)
+
+        try:
+            then =  parse(backfill_start).astimezone(timezone.utc)
+
+            while then < backfill_end:
                 then = get_next_run_time(interval_val, interval_type, then)
                 run(interval_val, interval_type, now=then)
-            exit(0)    
+            exit(0)
 
         except Exception as e:
             print(e)
@@ -274,7 +283,6 @@ def schedue_and_run(interval_val, interval_type):
     scheduler.start()
 
 if __name__ == "__main__":
-    
     interval_val, interval_type = parse_interval(interval)
 
     # parse input and setup global resources
