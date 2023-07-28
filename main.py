@@ -25,8 +25,10 @@ source_host = ""
 task_id = "" 
 interval = ""
 
-def parse_interval(interval):
-    interval = os.getenv('RUN_INTERVAL')
+def parse_interval(interval=None):
+    if interval is None:
+        interval = os.getenv('RUN_INTERVAL')
+  
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
         raise ValueError(f'Invalid format: {interval}')
@@ -69,6 +71,9 @@ def run(interval_val, interval_type, now=None):
 
     # generate the query
     start_time = time.time()
+
+    # setting up tags and fields in the run function in case the user
+    # has set NO_SCHEMA_CACHE=true, it can recalcuate the schema on successive runs
     setup_tags_and_fields()
     log_tags = [("task_id", task_id),
                 ("source_host", source_host),
@@ -127,6 +132,7 @@ def run(interval_val, interval_type, now=None):
     print(f"Downsampling job run successfully for {result} rows")
 
 def write_downsampled_data(reader):
+ 
     row_count = 0
     try:
         while True:
@@ -134,12 +140,13 @@ def write_downsampled_data(reader):
 
             df = batch.to_pandas()
             row_count += df.shape[0]
+    
             if 'iox::measurement' in df.columns:
                 df = df.drop('iox::measurement', axis=1)
             target_client.write(record=df,
                                 data_frame_measurement_name=target_measurement,
                                 data_frame_timestamp_column="time",
-                                data_frame_tag_columns=tags.to_pylist())
+                                data_frame_tag_columns=tags)
 
     except StopIteration as e:
         return True, row_count
@@ -282,7 +289,7 @@ def schedue_and_run(interval_val, interval_type):
     scheduler.start()
 
 if __name__ == "__main__":
-    interval_val, interval_type = parse_interval(interval)
+    interval_val, interval_type = parse_interval()
 
     # parse input and setup global resources
     setup_task_id()
