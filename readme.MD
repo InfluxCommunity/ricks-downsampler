@@ -44,7 +44,7 @@ If you leave out any of the first three envars (`LOG_HOST`, `LOG_DB`, or `LOG_TO
 
 ### Tags
 
-* `error` - can be "none", "query", or "write", depending on if and where the error was encountered.
+* `error` - can be "query", or "write", depending on where the error was encountered.
 * `task_host`- the host of the running task.
 * `interval` - the interval of the downsampling (such as 1m, 10m, 1h, etc...).
 * `task_id` - identifies the running downsampling task.
@@ -58,6 +58,7 @@ If you leave out any of the first three envars (`LOG_HOST`, `LOG_DB`, or `LOG_TO
 * `stop` - the end of the time window for the downsamping
 * `source_host` - the hostname of the InfluxDB instance that has the data being downsampled
 * `source_measurement` - the name of the measurement (table) being downsampled
+* `exception` - any error message associated and error
 
 # Time Behaviour
 

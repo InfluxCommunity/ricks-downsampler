@@ -123,7 +123,7 @@ def run(interval_val, interval_type, now=None):
     log_fields.append(("write_time", write_time))
     if not success:
         log_tags.append(("error","write"))
-        log_tags.append(("exception",result))
+        log_fields.append(("exception",result))
         log("task_log", log_tags, log_fields)
         print(f"Downsampling job failed with {result}", flush=True)
         return
