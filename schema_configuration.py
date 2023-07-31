@@ -25,7 +25,6 @@ def populate_tags(client, measurement):
                 return []
             else:
                 return include_tags.split(",")
-                print(tags)
         except Exception as e:
             print(f"parsing INCLUDE_TAGS failed: {str(e)}")
             exit(1)

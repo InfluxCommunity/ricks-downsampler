@@ -52,7 +52,7 @@ def setup_tags_and_fields():
 
 def get_down_sampled_data(query):
     if source_client is None or source_measurement == "":
-        print("Source InfluxDB instane not defined. Existing ...")
+        print("Source InfluxDB instance not defined. Existing ...")
         exit(1)
     else:
         try:
@@ -67,7 +67,8 @@ def run(interval_val, interval_type, now=None):
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
-    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp will be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.")
+    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp will be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.",
+          flush=True)
 
     # generate the query
     start_time = time.time()
@@ -107,7 +108,7 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","query"))
         log_fields.append(("exception",exception_string))
         log("task_log", log_tags, log_fields)
-        print(f"Downsampling job failed with {exception_string}")
+        print(f"Downsampling job failed with {exception_string}", flush=True)
         return
 
 
@@ -124,12 +125,12 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","write"))
         log_tags.append(("exception",result))
         log("task_log", log_tags, log_fields)
-        print(f"Downsampling job failed with {result}")
+        print(f"Downsampling job failed with {result}", flush=True)
         return
     log_fields.append(("row_count", result))
     #log the results
     log("task_log", log_tags, log_fields)
-    print(f"Downsampling job run successfully for {result} rows")
+    print(f"Downsampling job run successfully for {result} rows", flush=True)
 
 def write_downsampled_data(reader):
  
@@ -153,7 +154,7 @@ def write_downsampled_data(reader):
     
     except Exception as e:
         print("write exception caught")
-        print(e)
+        print(e, flush=True)
         return False, str(e)
 
 def log(measurement, tags, fields):
@@ -165,7 +166,7 @@ def log(measurement, tags, fields):
     try:
         logging_client.write(point)
     except Exception as e:
-        print(f"Logging failed with exception {str(e)}")
+        print(f"Logging failed with exception {str(e)}", flush=True)
 
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
@@ -179,7 +180,7 @@ def setup_source_client():
     source_host = host
 
     if None in [host, db, token, source_measurement]:
-        print("Source host, database, token, or measurement not defined. Aborting ...")
+        print("Source host, database, token, or measurement not defined. Aborting ...", flush=True)
         exit(1)
     else:
         global source_client
@@ -212,7 +213,7 @@ def setup_logging():
     org = os.getenv('LOG_ORG', 'none')
 
     if None in [host, db, token]:
-        print("Log host, database, or token not defined. Skipping logging.")
+        print("Log host, database, or token not defined. Skipping logging.", flush=True)
     else:
         global logging_client
         logging_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
