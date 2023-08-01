@@ -117,24 +117,27 @@ def run(interval_val, interval_type, now=None):
 
     # if success if false, result is an error string
     # otherwise results is the count of rows written
-    success, result  = write_downsampled_data(reader)
+    success, result, row_count, retries  = write_downsampled_data(reader)
     end_time = time.time()
     write_time = end_time - start_time
     log_fields.append(("write_time", write_time))
     if not success:
         log_tags.append(("error","write"))
         log_fields.append(("exception",result))
+        log_fields.append(("row_count", row_count))
+        log_fields.append(("retries"), retries)
         log("task_log", log_tags, log_fields)
-        print(f"Downsampling job failed with {result}", flush=True)
+        print(f"Downsampling job failed with {result}, {retries} retries, {row_count} rows written", flush=True)
         return
-    log_fields.append(("row_count", result))
+
+    log_fields.append(("row_count", row_count))
     #log the results
     log("task_log", log_tags, log_fields)
-    print(f"Downsampling job run successfully for {result} rows", flush=True)
+    print(f"Downsampling job run successfully for {row_count} rows", flush=True)
 
 def write_downsampled_data(reader):
- 
     row_count = 0
+    retries = 0
     try:
         while True:
             batch, buff = reader.read_chunk()
@@ -144,18 +147,33 @@ def write_downsampled_data(reader):
     
             if 'iox::measurement' in df.columns:
                 df = df.drop('iox::measurement', axis=1)
-            target_client.write(record=df,
-                                data_frame_measurement_name=target_measurement,
-                                data_frame_timestamp_column="time",
-                                data_frame_tag_columns=tags)
+
+            max_retries = int(os.getenv("MAX_WRITE_RETRIES", 5))
+            for i in range(max_retries):
+                try:
+                    target_client.write(record=df,
+                                        data_frame_measurement_name=target_measurement,
+                                        data_frame_timestamp_column="time",
+                                        data_frame_tag_columns=tags)
+                    # if write is successful, break the retry loop
+                    break
+                    retries += 1
+
+                except Exception as e:
+                    print(f"Error on write attempt {i+1}: {str(e)}", flush=True)
+                    wait_time = (2 ** i) + random.random()  # exponential backoff with jitter
+                    time.sleep(wait_time)
+                    # if this was the last retry and it still failed, re-raise the exception
+                    if i == max_retries - 1:
+                        raise
 
     except StopIteration as e:
-        return True, row_count
+        return True, None, row_count, retries
     
     except Exception as e:
         print("write exception caught")
         print(e, flush=True)
-        return False, str(e)
+        return False, str(e), row_count, retries
 
 def log(measurement, tags, fields):
     point = Point(measurement)
