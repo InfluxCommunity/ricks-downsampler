@@ -1,11 +1,11 @@
 from datetime import timezone
-def generate_fields_string(fields_dict):
+def generate_fields_string(fields_dict, aggregate):
     query = ''
     for field_name, field_type in fields_dict.items():
         if field_is_num(field_name, fields_dict):
             if query != '':
                 query += ',\n'
-            query += f'\tmean("{field_name}") as "{field_name}"'
+            query += f'\t{aggregate}("{field_name}") as "{field_name}"'
     return query
 
 def generate_group_by_string(tags_list, interval):
@@ -15,8 +15,8 @@ def generate_group_by_string(tags_list, interval):
         group_by_clause += f', {tag}'
     return group_by_clause
 
-def get_query(fields_dict, measurement, then, now, tags_list, interval ):
-    fields_clause = generate_fields_string(fields_dict)
+def get_query(fields_dict, measurement, then, now, tags_list, interval, aggregate ):
+    fields_clause = generate_fields_string(fields_dict, aggregate)
     tags_clause = generate_group_by_string(tags_list, interval)
 
     query = f"""
@@ -31,7 +31,7 @@ AND
 GROUP BY
     {tags_clause}
     """
-    
+
     return query
 
 def field_is_num(field_name, fields_dict):
