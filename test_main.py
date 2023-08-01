@@ -173,6 +173,6 @@ class TestWriteData(unittest.TestCase):
         mock_reader.read_chunk.assert_called()
         mock_batch.to_pandas.assert_called()
         mock_target_client.write.assert_called()
-
+        
 if __name__ == "__main__":
     unittest.main()
