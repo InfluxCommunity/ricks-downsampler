@@ -24,6 +24,7 @@ ignore_schema_cache = False
 source_host = ""
 task_id = "" 
 interval = ""
+aggregate = ""
 
 def parse_interval(interval=None):
     if interval is None:
@@ -36,6 +37,16 @@ def parse_interval(interval=None):
     if t < 1:
         raise ValueError('Time period must be greater than 0')
     return t, match.group(2)
+
+def setup_aggregate():
+    global aggregate
+    aggregate = os.getenv("AGGREGATE", "MEAN")
+    allowed_aggregates = ["count","distinct","mean","median","stddev","sum","first","last","max","min"]
+
+    if aggregate.lower() not in allowed_aggregates:
+        help_url  = "https://docs.influxdata.com/influxdb/cloud-serverless/reference/influxql/feature-support/#function-support"
+        print(f"aggregate {aggregate} not allowed. Only {allowed_aggregates} accepted. See {help_url}", flush=True)
+        exit(1)
 
 def setup_tags_and_fields():
     global fields
@@ -87,7 +98,8 @@ def run(interval_val, interval_type, now=None):
     log_fields =  [("start", then.strftime('%Y-%m-%dT%H:%M:%SZ')),
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
-    query = get_query(fields, source_measurement, then, now, tags, interval)
+    query = get_query(fields, source_measurement, then, now, tags, interval, aggregate)
+    print(query)
     end_time = time.time()
 
     query_gen_time = end_time - start_time
@@ -316,6 +328,7 @@ if __name__ == "__main__":
     setup_target_client()
     setup_logging()
     setup_no_schema_cache_option()
+    setup_aggregate()
 
     # run as backfill job and excit if defined by the user
     backfill(interval_val, interval_type)
