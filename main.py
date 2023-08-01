@@ -125,11 +125,11 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","write"))
         log_fields.append(("exception",result))
         log_fields.append(("row_count", row_count))
-        log_fields.append(("retries"), retries)
+        log_fields.append(("retries", retries))
         log("task_log", log_tags, log_fields)
         print(f"Downsampling job failed with {result}, {retries} retries, {row_count} rows written", flush=True)
         return
-
+    log_fields.append(("retries", retries))
     log_fields.append(("row_count", row_count))
     #log the results
     log("task_log", log_tags, log_fields)
