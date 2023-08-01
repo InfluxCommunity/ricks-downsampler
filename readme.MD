@@ -25,6 +25,7 @@ This code is designed to be run in a container, and uses a collection of environ
 * `TARGET_MEASUREMENT` - if you wish to supply a different name for downsampled measurement, otherwise, it will use the name of the source measurement.
 * `BACKFILL_START` - if you wish to run the process starting from a point in the pass you can include a timestamp in ISO 8601 format (ex: "2023-07-24T16:20:00Z"). The process will go back to that time, calculate the next runtime as describe below, and downsample each internval serially until it reaches the current time (or the time specified in BACKFILL_END), and then process will quit. 
 * `BACKFILL_END` - Time to stop the downsampling in ISO 8601 format.
+* `MAX_WRITE_RETRIES` - Specifies how many retries for each batch of data in case of a write failure. Writes are retried with a simple exponential backoff of 1 second * number of retries so far, per batch. Defaults to 5.
 
 
 # Logging
