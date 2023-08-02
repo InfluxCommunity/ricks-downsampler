@@ -1,4 +1,5 @@
 import os
+import json
 
 def populate_fields(client, measurement):
   
@@ -12,6 +13,18 @@ def populate_fields(client, measurement):
                             [f.as_py() for f in fields_table["fieldType"]]))
         return fields
     
+
+def populate_tag_values():
+    json_str = os.getenv("INCLUDE_TAG_VALUES")
+
+    try:
+        if json_str is not None:
+            return json.loads(json_str)
+        else:
+            return None
+    except Exception as e:
+        print(f"Failed to parse INCLUDE_TAG_VALUES: {str(e)}")
+        exit(1)
 
 def populate_tags(client, measurement):  
     if client is None or measurement == "":

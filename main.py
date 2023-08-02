@@ -10,7 +10,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timezone
 from influxdb_client_3 import InfluxDBClient3, Point, SYNCHRONOUS, write_client_options
 from schedule_calculator import get_next_run_time, get_then
-from schema_configuration import populate_fields, populate_tags
+from schema_configuration import populate_fields, populate_tags, populate_tag_values
 from influxql_generator import get_query
 
 logging_client = None
@@ -25,6 +25,7 @@ source_host = ""
 task_id = "" 
 interval = ""
 aggregate = ""
+tag_values = None
 
 def parse_interval(interval=None):
     if interval is None:
@@ -51,6 +52,7 @@ def setup_aggregate():
 def setup_tags_and_fields():
     global fields
     global tags
+    global tag_values
     global ignore_schema_cache
     global source_client
     global source_measurement
@@ -60,6 +62,9 @@ def setup_tags_and_fields():
 
     if tags is None or ignore_schema_cache:
         tags = populate_tags(source_client, source_measurement)
+    
+    if tag_values is None or ignore_schema_cache:
+        tag_values = populate_tag_values()
 
 def get_down_sampled_data(query):
     if source_client is None or source_measurement == "":
@@ -98,7 +103,7 @@ def run(interval_val, interval_type, now=None):
     log_fields =  [("start", then.strftime('%Y-%m-%dT%H:%M:%SZ')),
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
-    query = get_query(fields, source_measurement, then, now, tags, interval, aggregate)
+    query = get_query(fields, source_measurement, then, now, tags, interval, aggregate, tag_values)
     print(query)
     end_time = time.time()
 
