@@ -4,6 +4,9 @@ import socket
 import time
 import string
 import random
+import logging
+from pythonjsonlogger import jsonlogger
+
 from dateutil.parser import parse
 from apscheduler.schedulers.background import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -26,6 +29,7 @@ task_id = ""
 interval = ""
 aggregate = ""
 tag_values = None
+logger = None
 
 def parse_interval(interval=None):
     if interval is None:
@@ -46,7 +50,7 @@ def setup_aggregate():
 
     if aggregate.lower() not in allowed_aggregates:
         help_url  = "https://docs.influxdata.com/influxdb/cloud-serverless/reference/influxql/feature-support/#function-support"
-        print(f"aggregate {aggregate} not allowed. Only {allowed_aggregates} accepted. See {help_url}", flush=True)
+        logger.critical(f"aggregate {aggregate} not allowed. Only {allowed_aggregates} accepted. See {help_url}")
         exit(1)
 
 def setup_tags_and_fields():
@@ -68,7 +72,7 @@ def setup_tags_and_fields():
 
 def get_down_sampled_data(query):
     if source_client is None or source_measurement == "":
-        print("Source InfluxDB instance not defined. Existing ...")
+        logger.critical("Source InfluxDB instance not defined. Exiting ...")
         exit(1)
     else:
         try:
@@ -83,8 +87,7 @@ def run(interval_val, interval_type, now=None):
     now = now.replace(second=0,microsecond=0)
     then = get_then(interval_val, interval_type, now)
 
-    print(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp will be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.",
-          flush=True)
+    logger.info(f"Running job for {then.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}. Time stamp will be {then.strftime('%Y-%m-%dT%H:%M:%SZ')}.")
 
     # generate the query
     start_time = time.time()
@@ -104,7 +107,7 @@ def run(interval_val, interval_type, now=None):
                     ("stop", now.strftime('%Y-%m-%dT%H:%M:%SZ'))]
 
     query = get_query(fields, source_measurement, then, now, tags, interval, aggregate, tag_values)
-    print(query)
+    logger.debug(f"running query: {query}")
     end_time = time.time()
 
     query_gen_time = end_time - start_time
@@ -125,7 +128,7 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","query"))
         log_fields.append(("exception",exception_string))
         log("task_log", log_tags, log_fields)
-        print(f"Downsampling job failed with {exception_string}", flush=True)
+        logger.critical(f"Downsampling job failed with {exception_string}")
         return
 
 
@@ -144,13 +147,13 @@ def run(interval_val, interval_type, now=None):
         log_fields.append(("row_count", row_count))
         log_fields.append(("retries", retries))
         log("task_log", log_tags, log_fields)
-        print(f"Downsampling job failed with {result}, {retries} retries, {row_count} rows written", flush=True)
+        logger.error(f"Downsampling job failed with {result}, {retries} retries, {row_count} rows written")
         return
     log_fields.append(("retries", retries))
     log_fields.append(("row_count", row_count))
     #log the results
     log("task_log", log_tags, log_fields)
-    print(f"Downsampling job run successfully for {row_count} rows", flush=True)
+    logger.info(f"Downsampling job run successfully for {row_count} rows")
 
 def write_downsampled_data(reader):
     row_count = 0
@@ -177,7 +180,7 @@ def write_downsampled_data(reader):
                     retries += 1
 
                 except Exception as e:
-                    print(f"Error on write attempt {i+1}: {str(e)}", flush=True)
+                    logger.error(f"Error on write attempt {i+1}: {str(e)}")
                     wait_time = (2 ** i) + random.random()  # exponential backoff with jitter
                     time.sleep(wait_time)
                     # if this was the last retry and it still failed, re-raise the exception
@@ -188,8 +191,7 @@ def write_downsampled_data(reader):
         return True, None, row_count, retries
     
     except Exception as e:
-        print("write exception caught")
-        print(e, flush=True)
+        logger.error(f"write failed with exception {str(e)}")
         return False, str(e), row_count, retries
 
 def log(measurement, tags, fields):
@@ -201,7 +203,7 @@ def log(measurement, tags, fields):
     try:
         logging_client.write(point)
     except Exception as e:
-        print(f"Logging failed with exception {str(e)}", flush=True)
+        logger.error(f"Logging failed with exception {str(e)}")
 
 def setup_source_client():
     host = os.getenv('SOURCE_HOST')
@@ -215,7 +217,7 @@ def setup_source_client():
     source_host = host
 
     if None in [host, db, token, source_measurement]:
-        print("Source host, database, token, or measurement not defined. Aborting ...", flush=True)
+        logger.critical("Source host, database, token, or measurement not defined. Aborting ...")
         exit(1)
     else:
         global source_client
@@ -234,21 +236,21 @@ def setup_target_client():
     target_measurement = os.getenv('TARGET_MEASUREMENT', source_measurement)
 
     if None in [host, db, token, source_measurement]:
-        print("Target host, database, token, or measurement not defined. Aborting ...")
+        logger.critical("Target host, database, token, or measurement not defined. Aborting ...")
         exit(1)
     else:
         global target_client
         wco = write_client_options(write_options=SYNCHRONOUS)
         target_client = InfluxDBClient3(host=host, database=db, token=token, org=org, write_client_options=wco)
 
-def setup_logging():
+def setup_container_logging():
     host = os.getenv('LOG_HOST')
     db = os.getenv('LOG_DB')
     token = os.getenv('LOG_TOKEN')
     org = os.getenv('LOG_ORG', 'none')
 
     if None in [host, db, token]:
-        print("Log host, database, or token not defined. Skipping logging.", flush=True)
+        logging.info("Log host, database, or token not defined. Skipping logging.")
     else:
         global logging_client
         logging_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
@@ -284,16 +286,20 @@ def backfill(interval_val, interval_type):
             exit(0)
 
         except Exception as e:
-            print(e)
-            print(f"BACKFILL_START not readable. Use '2023-07-24T16:20:00Z' format")
+            logger.critical(f"Parsing backfill failed with exception {str(e)}")
             exit(1)
 
 def run_previous_interval(interval_val, interval_type):
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
+    logger.debug(f"RUN_PREVIOUS_INTERVAL set to: {run_previous_opt}")
     run_previous = run_previous_opt.lower() in ['true', '1']
+    logger.debug(f"RUN_PREVIOUS_INTERVAL is {run_previous}")
     if run_previous:
+        logger.info(f"Running previous interval")
         now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
         run(interval_val, interval_type, now=now)
+    else:
+        logger.info(f"Skipping previous internval")
 
 def schedue_and_run(interval_val, interval_type):
     # set the start date based on the interval type
@@ -324,14 +330,39 @@ def schedue_and_run(interval_val, interval_type):
                         )
     scheduler.start()
 
+def setup_logger():
+    global logger
+    logger = logging.getLogger()
+
+    # Create a handler for STDOUT
+    handler = logging.StreamHandler()
+
+    # Format the log in JSON format
+    formatter = jsonlogger.JsonFormatter()
+    handler.setFormatter(formatter)
+
+    # Set the log level
+    logging_level = os.getenv("CONTAINER_LOG_LEVEL", "INFO")
+    numeric_level = getattr(logging, logging_level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f'Invalid log level: {logging_level}')
+    
+    # Assign handler to the logger
+    logger.addHandler(handler)
+    logger.setLevel(numeric_level)
+    logger.debug(f"Logger set to logging level: {logging_level}, {numeric_level}")
+
 if __name__ == "__main__":
+    # set up the logger
+    setup_logger()
+
     interval_val, interval_type = parse_interval()
 
     # parse input and setup global resources
     setup_task_id()
     setup_source_client()
     setup_target_client()
-    setup_logging()
+    setup_container_logging()
     setup_no_schema_cache_option()
     setup_aggregate()
 

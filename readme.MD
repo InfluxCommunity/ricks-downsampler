@@ -28,6 +28,7 @@ This code is designed to be run in a container, and uses a collection of environ
 * `BACKFILL_END` - Time to stop the downsampling in ISO 8601 format.
 * `MAX_WRITE_RETRIES` - Specifies how many retries for each batch of data in case of a write failure. Writes are retried with a simple exponential backoff, per batch. Defaults to 5.
 * `AGGREGATE` - Specify an aggregate function to apply to all fields. Defaults to MEAN. It should support all aggregates and selectors currently [documented](https://docs.influxdata.com/influxdb/cloud-serverless/reference/influxql/feature-support/#function-support) to be supported by InfluxQL.
+* `CONTAINER_LOG_LEVEL` - Set the verbosity of the logs coming from the container itself. Note that this does not impact the task run logs sent to InfluxDB, this is only for the logs sent to stdout and stderr. This is useful for controlling the amount of logs being written to logging services, and thus helpful for controlling costs. It can be set to one of the following values: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. `DEBUG` logs all messages, while `CRITICAL` only logs the most severe messages. If `CONTAINER_LOG_LEVEL` is not set, the default level is `INFO`, which logs informational messages and any message of higher severity such as warnings and errors. `ERROR` is recommended for running the container in a hosted container runtime environment.
 
 
 # Logging
