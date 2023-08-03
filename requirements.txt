@@ -2,3 +2,4 @@ influxdb3-python
 pandas
 apscheduler
 python-dateutil
+python-json-logger
