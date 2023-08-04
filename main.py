@@ -195,6 +195,7 @@ def write_downsampled_data(reader):
         return False, str(e), row_count, retries
 
 def log(measurement, tags, fields):
+    
     point = Point(measurement)
     for field in fields:
         point.field(field[0], field[1])
@@ -250,7 +251,7 @@ def setup_container_logging():
     org = os.getenv('LOG_ORG', 'none')
 
     if None in [host, db, token]:
-        logging.info("Log host, database, or token not defined. Skipping logging.")
+        logger.info("Log host, database, or token not defined. Skipping logging.")
     else:
         global logging_client
         logging_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
