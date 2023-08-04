@@ -255,8 +255,6 @@ def setup_container_logging():
     else:
         global logging_client
         logging_client = InfluxDBClient3(host=host, database=db, token=token, org=org)
-        global interval
-        interval = os.getenv('RUN_INTERVAL')
 
 def setup_task_id():
     global task_id
