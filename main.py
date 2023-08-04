@@ -31,16 +31,19 @@ aggregate = ""
 tag_values = None
 logger = None
 
-def parse_interval(interval=None):
-    if interval is None:
+def parse_interval(explicit_interval=None):
+    global interval
+    if explicit_interval is None:
         interval = os.getenv('RUN_INTERVAL')
   
     match = re.fullmatch(r'(\d+)([mhd])', interval)
     if match is None:
-        raise ValueError(f'Invalid format: {interval}')
+        logger.critical(f"invalid interval format: {interval}")
+        exit(1)
     t = int(match.group(1))
     if t < 1:
-        raise ValueError('Time period must be greater than 0')
+        logger.critical(f"invalid interval format: {interval}")
+        exit(1)
     return t, match.group(2)
 
 def setup_aggregate():
@@ -128,7 +131,7 @@ def run(interval_val, interval_type, now=None):
         log_tags.append(("error","query"))
         log_fields.append(("exception",exception_string))
         log("task_log", log_tags, log_fields)
-        logger.critical(f"Downsampling job failed with {exception_string}")
+        logger.error(f"Downsampling job failed with {exception_string}")
         return
 
 
@@ -195,7 +198,10 @@ def write_downsampled_data(reader):
         return False, str(e), row_count, retries
 
 def log(measurement, tags, fields):
-    
+    logger.info(f"logging: {measurement},{tags},{fields}")
+    if logging_client is None:
+        logger.info("No logging client specified, skipping logging")
+        return
     point = Point(measurement)
     for field in fields:
         point.field(field[0], field[1])
