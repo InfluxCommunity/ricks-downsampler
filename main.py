@@ -371,7 +371,7 @@ if __name__ == "__main__":
     setup_no_schema_cache_option()
     setup_aggregate()
 
-    # run as backfill job and excit if defined by the user
+    # run as backfill job and exit if defined by the user
     backfill(interval_val, interval_type)
 
     # run the previous interval if requested by the user
