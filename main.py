@@ -306,7 +306,7 @@ def run_previous_interval(interval_val, interval_type):
     else:
         logger.info(f"Skipping previous internval")
 
-def schedue_and_run(interval_val, interval_type):
+def schedule_and_run(interval_val, interval_type):
     # set the start date based on the interval type
     # set the values for the intervals
     start_date = datetime.now()
@@ -378,4 +378,4 @@ if __name__ == "__main__":
     run_previous_interval(interval_val, interval_type)
 
     # start the job and run forever
-    schedue_and_run(interval_val, interval_type)
+    schedule_and_run(interval_val, interval_type)
