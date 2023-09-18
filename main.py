@@ -217,6 +217,7 @@ def setup_source_client():
     db = os.getenv('SOURCE_DB')
     token = os.getenv('SOURCE_TOKEN')
     org = os.getenv('SOURCE_ORG', 'none')
+
     global source_measurement
     source_measurement = os.getenv('SOURCE_MEASUREMENT')
 
@@ -293,6 +294,10 @@ def backfill(interval_val, interval_type):
         except Exception as e:
             logger.critical(f"Parsing backfill failed with exception {str(e)}")
             exit(1)
+
+def run_once_setting():
+    run_once_opt = os.getenv('RUN_ONCE', 'false')
+    return run_once_opt.lower() in ['true', '1']
 
 def run_previous_interval(interval_val, interval_type):
     run_previous_opt = os.getenv('RUN_PREVIOUS_INTERVAL', 'false')
@@ -377,5 +382,8 @@ if __name__ == "__main__":
     # run the previous interval if requested by the user
     run_previous_interval(interval_val, interval_type)
 
-    # start the job and run forever
-    schedule_and_run(interval_val, interval_type)
+    # run once, or start the job and run forever
+    if run_once_setting()():
+        print("RUN ONCE")
+    else:
+        schedule_and_run(interval_val, interval_type)
