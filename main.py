@@ -160,43 +160,45 @@ def run(interval_val, interval_type, now=None):
 
 def write_downsampled_data(reader):
     row_count = 0
-    retries = 0
+    retry_count = 0
+    current_batch = 0
     try:
         while True:
             batch, buff = reader.read_chunk()
 
             df = batch.to_pandas()
             row_count += df.shape[0]
-            logger.debug(df)
-    
+
             if 'iox::measurement' in df.columns:
                 df = df.drop('iox::measurement', axis=1)
 
             max_retries = int(os.getenv("MAX_WRITE_RETRIES", 5))
-            for i in range(max_retries):
+            for tries in range(max_retries):
                 try:
                     target_client.write(record=df,
                                         data_frame_measurement_name=target_measurement,
                                         data_frame_timestamp_column="time",
                                         data_frame_tag_columns=tags)
                     # if write is successful, break the retry loop
-                    retries += 1
+                    current_batch += 1
+                    logger.debug(f"Successful write for batch {current_batch} attempt {tries + 1}")
                     break
                     
                 except Exception as e:
-                    logger.error(f"Error on write attempt {i+1}: {str(e)}")
-                    wait_time = (2 ** i) + random.random()  # exponential backoff with jitter
+                    retry_count += 1
+                    logger.error(f"Error on batch {current_batch + 1} write attempt {tries+1}: {str(e)}")
+                    wait_time = (2 ** tries) + random.random()  # exponential backoff with jitter
                     time.sleep(wait_time)
                     # if this was the last retry and it still failed, re-raise the exception
-                    if i == max_retries - 1:
+                    if tries == max_retries - 1:
                         raise
 
     except StopIteration as e:
-        return True, None, row_count, retries
+        return True, None, row_count, retry_count
     
     except Exception as e:
         logger.error(f"write failed with exception {str(e)}")
-        return False, str(e), row_count, retries
+        return False, str(e), row_count, retry_count
 
 def log(measurement, tags, fields):
     logger.info(f"logging: {measurement},{tags},{fields}")
