@@ -7,7 +7,6 @@ A project to make it easy to downsample with InfluxDB 3.0. It handles running a 
 This code is designed to be run in a container, and uses a collection of environment variables to configure it.
 
 ## Required Envars
-
 * `RUN_INTERVAL` - A string in the form of an InfluxQL time interval. i.e. an integer then a time specifier. Examples: 1m, 6h, 7d. Allowable time specifiers are m (minutes), h (hours), and d (days).
 * `SOURCE_HOST` - the host of the influxdb instance from which you are downsampling.
 * `SOURCE_DB` - the database that you want to downsample.

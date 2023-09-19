@@ -167,6 +167,7 @@ def write_downsampled_data(reader):
 
             df = batch.to_pandas()
             row_count += df.shape[0]
+            logger.debug(df)
     
             if 'iox::measurement' in df.columns:
                 df = df.drop('iox::measurement', axis=1)
@@ -179,9 +180,9 @@ def write_downsampled_data(reader):
                                         data_frame_timestamp_column="time",
                                         data_frame_tag_columns=tags)
                     # if write is successful, break the retry loop
-                    break
                     retries += 1
-
+                    break
+                    
                 except Exception as e:
                     logger.error(f"Error on write attempt {i+1}: {str(e)}")
                     wait_time = (2 ** i) + random.random()  # exponential backoff with jitter
@@ -383,7 +384,8 @@ if __name__ == "__main__":
     run_previous_interval(interval_val, interval_type)
 
     # run once, or start the job and run forever
-    if run_once_setting()():
-        print("RUN ONCE")
+    if run_once_setting():
+        now = get_next_run_time(interval_val, interval_type, run_previous=True, now=datetime.utcnow())
+        run(interval_val, interval_type, now=now)
     else:
         schedule_and_run(interval_val, interval_type)
